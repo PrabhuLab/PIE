@@ -33,6 +33,7 @@ Current team in charge of the repository:
 - Dr. Michael Wong
 - Dr. Anirudh Prabhu
 - Jose Perez Chavez
+- Vasundhara Gatne
 
 ## License
 This repository is licensed under the Apache License. Please see the LICENSE file for more information.
