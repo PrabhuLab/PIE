@@ -85,8 +85,6 @@ data <- read.transactions("/Users/vgatne/Documents/PIE/Data/planetStellarData.cs
 association.rules <- apriori(data, parameter = list(supp=0.0004, conf=0.5, minlen = 2))
 inspect(association.rules)
 
-shorter.rules <- subset(association.rules, lift > 3)
-inspect(shorter.rules)
-
 plot(association.rules, method = "graph", engine = "html")
-plot(shorter.rules, method = "graph", engine = "html")
+
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/stellarPlanetAssoc_mainSeq_subTypes-rules.csv", row.names = FALSE, sep = ",")

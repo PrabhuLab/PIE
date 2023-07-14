@@ -23,7 +23,6 @@ planetsInitial <- planetsInitial %>% mutate("PlanetType" = case_when(
   (planetsInitial$"PlanetRadius" > 0) & (planetsInitial$"PlanetRadius" < 1.7) ~ "Terrestrial",
   (planetsInitial$"PlanetRadius" >= 1.7) & (planetsInitial$"PlanetRadius" < 3.9) ~ "Mini-Neptune",
   ((planetsInitial$"PlanetRadius" >= 3.9) & (planetsInitial$"PlanetRadius" < 9.4)) & (planetsInitial$"PlanetMass" < 1) ~ "Sub-Saturn",
-  #((planetsInitial$"PlanetRadius" >= 9.4) | (planetsInitial$"PlanetMass" > 1)) & (planetsInitial$"OrbitalPeriod" < 10) ~ "Hot Jupiter",
   (planetsInitial$"PlanetRadius" >= 9.4) | (planetsInitial$"PlanetMass" > 1) ~ "Gas Giant",
   .default = "Other"))
 
@@ -47,3 +46,4 @@ inspect(association.rules)
 
 plot(association.rules, method = "graph", engine = "html")
 
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/planetAssoc_subTypes-rules.csv", row.names = FALSE, sep = ",")

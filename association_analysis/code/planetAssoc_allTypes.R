@@ -36,3 +36,5 @@ association.rules <- apriori(data, parameter = list(supp=0.0001, conf=0.5, minle
 inspect(association.rules)
 
 plot(association.rules, method = "graph", engine = "html")
+
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/planetAssoc_allTypes-rules.csv", row.names = FALSE, sep = ",")

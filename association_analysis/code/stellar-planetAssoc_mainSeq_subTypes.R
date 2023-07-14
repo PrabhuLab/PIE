@@ -86,4 +86,4 @@ inspect(association.rules)
 
 plot(association.rules, method = "graph", engine = "html")
 
-
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/stellar-planetAssoc_mainSeq_subTypes-rules.csv", row.names = FALSE, sep = ",")

@@ -1,0 +1,3 @@
+"rules","support","confidence","coverage","lift","count"
+"{Sub-Saturn,Terrestrial} => {Mini-Neptune}",0.0032379924446843,0.5,0.00647598488936859,1.12781497261108,12
+"{Gas Giant,Sub-Saturn,Terrestrial} => {Mini-Neptune}",0.000269832703723691,1,0.000269832703723691,2.25562994522215,1
