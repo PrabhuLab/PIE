@@ -1,4 +1,4 @@
-#Temperature based Planet Sub-Type and Stellar Type Association
+#Temperature based Planet Sub-Type Association with Main Sequence Stars
 
 library(arules)
 library(arulesViz)
@@ -23,6 +23,7 @@ planetsInitial <- planetsInitial %>% mutate("PlanetType" = case_when(
   (planetsInitial$"PlanetRadius" > 0) & (planetsInitial$"PlanetRadius" < 1.7) ~ "Terrestrial",
   (planetsInitial$"PlanetRadius" >= 1.7) & (planetsInitial$"PlanetRadius" < 3.9) ~ "Mini-Neptune",
   ((planetsInitial$"PlanetRadius" >= 3.9) & (planetsInitial$"PlanetRadius" < 9.4)) & (planetsInitial$"PlanetMass" < 1) ~ "Sub-Saturn",
+  ((planetsInitial$"PlanetRadius" >= 9.4) | (planetsInitial$"PlanetMass" > 1)) & (planetsInitial$"OrbitalPeriod" < 10) ~ "Hot Jupiter",
   (planetsInitial$"PlanetRadius" >= 9.4) | (planetsInitial$"PlanetMass" > 1) ~ "Gas Giant",
   .default = "Other"))
 
@@ -50,7 +51,7 @@ planetsInitial <- planetsInitial %>% mutate("PlanetTempSubType" = case_when(
 planetsInitial <- planetsInitial[!(planetsInitial$PlanetTempSubType == "Other"), ]
 
 #Adding Spectral Sub-Type and adjusting for consistency and NAs in data
-planetsInitial <- planetsInitial %>% mutate("SpectralSubType" = case_when(
+planetsInitial$SpectralSubType <- case_when(
   (planetsInitial$"StellarTemp" >= 2400) & (planetsInitial$"StellarTemp" < 3700) ~ "M",
   (planetsInitial$"StellarTemp" >= 3700) & (planetsInitial$"StellarTemp" < 5200) ~ "K",
   (planetsInitial$"StellarTemp" >= 5200) & (planetsInitial$"StellarTemp" < 6000) ~ "G",
@@ -60,28 +61,30 @@ planetsInitial <- planetsInitial %>% mutate("SpectralSubType" = case_when(
   (planetsInitial$"StellarTemp" >= 30000) ~ "O",
   (is.na(planetsInitial$"StellarTemp") & (!is.na(planetsInitial$"SpectralType"))) ~ substr(planetsInitial$"SpectralType", 1, 1),
   (!is.na(planetsInitial$"SpectralType")) ~ substr(planetsInitial$"SpectralType", 1, 1),
-  .default = "Other"))
+  .default = "Other")
 
 planetsInitial <- planetsInitial[!(planetsInitial$SpectralSubType == "Other"), ]
 
-planetData <- ddply(planetsInitial, c("HostName"),
-                    function(df1)paste(df1$PlanetTempSubType,
-                                       collapse = ","))
+#Adding Stellar Classifications
+planetsInitial <- planetsInitial %>% mutate("StellarClass" = case_when(
+  (planetsInitial$"SpectralSubType" == "M") & (planetsInitial$"Luminosity" < -1.0969) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "K") & (planetsInitial$"Luminosity" < -0.2218)~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "G") & (planetsInitial$"Luminosity" < 0.1761) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "F") & (planetsInitial$"Luminosity" < 0.699) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "A") & (planetsInitial$"Luminosity" < 1.3979) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "B") & (planetsInitial$"Luminosity" < 4.477) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "O") ~ "Main Sequence",
+  .default = "Gas Giant"))
 
-stellarData <- ddply(planetsInitial, c("HostName"),
-                     function(df1)paste(df1$SpectralSubType,
-                                        collapse = ","))
+#Removes planets in systems not in the Main Sequence
+planetsInitial <- planetsInitial[(planetsInitial$StellarClass == "Main Sequence"), ]
 
-stellarData$V1[nchar(stellarData$V1) > 1] <- substr(stellarData$V1, 1, 1)
+data<-transactions(data.frame(TID=planetsInitial$HostName, items = planetsInitial$PlanetTempSubType), format = "long")
+summary(data)
 
-planetStellarData <- data.frame(items=paste(stellarData$V1, planetData$V1, sep=","))
-
-write.csv(planetStellarData,"/Users/vgatne/Documents/PIE/Data/planetStellarData.csv", quote = FALSE, row.names = FALSE)
-data <- read.transactions("/Users/vgatne/Documents/PIE/Data/planetStellarData.csv", format = "basket", sep = ",")
-
-association.rules <- apriori(data, parameter = list(supp=0.0003, conf=0.5, minlen = 2))
+association.rules <- apriori(data, parameter = list(supp=0.0004, conf=0.5, minlen = 2))
 inspect(association.rules)
 
 plot(association.rules, method = "graph", engine = "html")
 
-write(association.rules, "/Users/vgatne/Documents/PIE/Rules/stellarPlanetAssoc_tempSubTypes-rules.csv", row.names = FALSE, sep = ",")
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/planetAssoc_mainSeq_tempSubTypes-rules.csv", row.names = FALSE, sep = ",")

@@ -1,4 +1,4 @@
-#Temperature based Planet Sub-Type and Stellar Type Association
+#Temperature based Planet Sub-Type and Stellar Type Association with Main Sequence Stars
 
 library(arules)
 library(arulesViz)
@@ -64,6 +64,20 @@ planetsInitial <- planetsInitial %>% mutate("SpectralSubType" = case_when(
 
 planetsInitial <- planetsInitial[!(planetsInitial$SpectralSubType == "Other"), ]
 
+#Adding Stellar Classifications
+planetsInitial <- planetsInitial %>% mutate("StellarClass" = case_when(
+  (planetsInitial$"SpectralSubType" == "M") & (planetsInitial$"Luminosity" < -1.0969) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "K") & (planetsInitial$"Luminosity" < -0.2218)~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "G") & (planetsInitial$"Luminosity" < 0.1761) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "F") & (planetsInitial$"Luminosity" < 0.699) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "A") & (planetsInitial$"Luminosity" < 1.3979) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "B") & (planetsInitial$"Luminosity" < 4.477) ~ "Main Sequence",
+  (planetsInitial$"SpectralSubType" == "O") ~ "Main Sequence",
+  .default = "Gas Giant"))
+
+#Removes planets in systems not in the Main Sequence
+planetsInitial <- planetsInitial[(planetsInitial$StellarClass == "Main Sequence"), ]
+
 planetData <- ddply(planetsInitial, c("HostName"),
                     function(df1)paste(df1$PlanetTempSubType,
                                        collapse = ","))
@@ -79,9 +93,9 @@ planetStellarData <- data.frame(items=paste(stellarData$V1, planetData$V1, sep="
 write.csv(planetStellarData,"/Users/vgatne/Documents/PIE/Data/planetStellarData.csv", quote = FALSE, row.names = FALSE)
 data <- read.transactions("/Users/vgatne/Documents/PIE/Data/planetStellarData.csv", format = "basket", sep = ",")
 
-association.rules <- apriori(data, parameter = list(supp=0.0003, conf=0.5, minlen = 2))
+association.rules <- apriori(data, parameter = list(supp=0.0004, conf=0.5, minlen = 2))
 inspect(association.rules)
 
 plot(association.rules, method = "graph", engine = "html")
 
-write(association.rules, "/Users/vgatne/Documents/PIE/Rules/stellarPlanetAssoc_tempSubTypes-rules.csv", row.names = FALSE, sep = ",")
+write(association.rules, "/Users/vgatne/Documents/PIE/Rules/stellarPlanetAssoc_mainSeq_tempSubTypes-rules.csv", row.names = FALSE, sep = ",")

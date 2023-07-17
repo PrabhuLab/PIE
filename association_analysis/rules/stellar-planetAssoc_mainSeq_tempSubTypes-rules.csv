@@ -1,0 +1,16 @@
+"rules","support","confidence","coverage","lift","count"
+"{M-Hot Sub-Saturn} => {M-Hot Mini-Neptune}",0.000727537286285922,0.666666666666667,0.00109130592942888,229.083333333333,2
+"{K-Cold Terrestrial,K-Temperate Terrestrial} => {K-Warm Terrestrial}",0.000727537286285922,0.666666666666667,0.00109130592942888,9.64561403508772,2
+"{K-Cold Terrestrial,K-Warm Terrestrial} => {K-Temperate Terrestrial}",0.000727537286285922,1,0.000727537286285922,83.3030303030303,2
+"{G-Cold Terrestrial,G-Hot Mini-Neptune} => {G-Warm Mini-Neptune}",0.000727537286285922,1,0.000727537286285922,5.29672447013487,2
+"{G-Cold Terrestrial,G-Warm Mini-Neptune} => {G-Hot Mini-Neptune}",0.000727537286285922,1,0.000727537286285922,22.9083333333333,2
+"{G-Temperate Sub-Saturn,G-Warm Sub-Saturn} => {G-Warm Mini-Neptune}",0.000727537286285922,0.5,0.00145507457257184,2.64836223506744,2
+"{M-Temperate Mini-Neptune,M-Temperate Terrestrial} => {M-Warm Terrestrial}",0.00109130592942888,1,0.00109130592942888,57.2708333333333,3
+"{F-Hot Terrestrial,F-Warm Sub-Saturn} => {F-Hot Mini-Neptune}",0.000727537286285922,0.666666666666667,0.00109130592942888,23.4957264957265,2
+"{G-Temperate Gas Giant,G-Temperate Mini-Neptune} => {G-Warm Mini-Neptune}",0.000727537286285922,0.666666666666667,0.00109130592942888,3.53114964675658,2
+"{G-Temperate Gas Giant,G-Warm Mini-Neptune} => {G-Temperate Mini-Neptune}",0.000727537286285922,0.666666666666667,0.00109130592942888,23.1983122362869,2
+"{G-Hot Mini-Neptune,G-Warm Sub-Saturn} => {G-Warm Mini-Neptune}",0.00109130592942888,0.75,0.00145507457257184,3.97254335260116,3
+"{G-Hot Terrestrial,G-Warm Sub-Saturn} => {G-Warm Mini-Neptune}",0.00109130592942888,0.6,0.00181884321571481,3.17803468208092,3
+"{K-Hot Terrestrial,K-Warm Terrestrial} => {K-Warm Mini-Neptune}",0.00254638050200073,0.636363636363636,0.00400145507457257,5.89011325374962,7
+"{G-Temperate Mini-Neptune,G-Warm Terrestrial} => {G-Warm Mini-Neptune}",0.000727537286285922,0.666666666666667,0.00109130592942888,3.53114964675658,2
+"{G-Hot Terrestrial,G-Temperate Mini-Neptune} => {G-Warm Mini-Neptune}",0.00145507457257184,0.8,0.00181884321571481,4.2373795761079,4

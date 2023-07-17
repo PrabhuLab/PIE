@@ -1,4 +1,4 @@
-#Planet Type and Stellar Type Association with Main Sequence Stars
+#Planet Sub-Type and Stellar Type Association with Main Sequence Stars
 
 library(arules)
 library(arulesViz)

@@ -37,6 +37,8 @@ planetsInitial$"SemiMajorAxis"[is.na(planetsInitial$"SemiMajorAxis")] <- calcula
 
 planetsInitial$"PlanetTemp"[is.na(planetsInitial$"PlanetTemp")] <- calculateTemp(planetsInitial$"Luminosity", planetsInitial$"SemiMajorAxis")
 
+planetsInitial$PlanetTemp[which(is.na(planetsInitial$PlanetTemp))] <- calculateTemp(planetsInitial$Luminosity, planetsInitial$SemiMajorAxis)
+
 #Adding Planet Sub-Types based on Temperature
 planetsInitial <- planetsInitial %>% mutate("PlanetTempSubType" = case_when(
   (planetsInitial$"PlanetTemp" >= 1000) ~ paste("Hot", planetsInitial$"PlanetType", sep=" "),

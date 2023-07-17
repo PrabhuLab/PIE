@@ -1,11 +1,12 @@
 "rules","support","confidence","coverage","lift","count"
-"{Cold Terrestrial,Warm Terrestrial} => {Temperate Terrestrial}",0.000540686672073533,0.5,0.00108137334414707,26.4214285714286,2
-"{Cold Terrestrial,Hot Mini-Neptune} => {Warm Mini-Neptune}",0.000540686672073533,1,0.000540686672073533,3.1241554054054,2
-"{Cold Terrestrial,Warm Mini-Neptune} => {Hot Mini-Neptune}",0.000540686672073533,1,0.000540686672073533,11.5233644859813,2
-"{Cold Mini-Neptune,Warm Terrestrial} => {Temperate Mini-Neptune}",0.000540686672073533,0.5,0.00108137334414707,8.0764192139738,2
-"{Temperate Sub-Saturn,Warm Gas Giant} => {Warm Sub-Saturn}",0.000540686672073533,0.5,0.00108137334414707,8.97815533980583,2
-"{Hot Sub-Saturn,Warm Mini-Neptune} => {Hot Mini-Neptune}",0.000540686672073533,0.666666666666667,0.0008110300081103,7.6822429906542,2
-"{Temperate Gas Giant,Temperate Mini-Neptune} => {Warm Mini-Neptune}",0.000540686672073533,0.666666666666667,0.0008110300081103,2.08277027027027,2
-"{Hot Mini-Neptune,Temperate Gas Giant} => {Hot Gas Giant}",0.000540686672073533,1,0.000540686672073533,6.24831081081081,2
-"{Hot Gas Giant,Hot Mini-Neptune} => {Temperate Gas Giant}",0.000540686672073533,0.666666666666667,0.0008110300081103,13.8539325842697,2
-"{Hot Terrestrial,Temperate Mini-Neptune} => {Warm Mini-Neptune}",0.00135171668018383,0.625,0.00216274668829413,1.95259712837838,5
+"{Cold Terrestrial,Warm Terrestrial} => {Temperate Terrestrial}",0.000539665407447383,0.5,0.00107933081489477,26.0985915492958,2
+"{Cold Terrestrial,Hot Mini-Neptune} => {Warm Mini-Neptune}",0.000539665407447383,1,0.000539665407447383,3.13006756756757,2
+"{Cold Terrestrial,Warm Mini-Neptune} => {Hot Mini-Neptune}",0.000539665407447383,1,0.000539665407447383,11.5093167701863,2
+"{Cold Mini-Neptune,Warm Terrestrial} => {Temperate Mini-Neptune}",0.000539665407447383,0.5,0.00107933081489477,8.05652173913044,2
+"{Temperate Sub-Saturn,Warm Gas Giant} => {Warm Sub-Saturn}",0.000539665407447383,0.5,0.00107933081489477,8.95169082125604,2
+"{Hot Sub-Saturn,Warm Mini-Neptune} => {Hot Mini-Neptune}",0.000539665407447383,0.666666666666667,0.000809498111171074,7.67287784679089,2
+"{Temperate Gas Giant,Temperate Mini-Neptune} => {Warm Mini-Neptune}",0.000539665407447383,0.5,0.00107933081489477,1.56503378378378,2
+"{Hot Mini-Neptune,Temperate Gas Giant} => {Hot Gas Giant}",0.000539665407447383,1,0.000539665407447383,6.26013513513514,2
+"{Hot Gas Giant,Hot Mini-Neptune} => {Temperate Gas Giant}",0.000539665407447383,0.666666666666667,0.000809498111171074,13.8801498127341,2
+"{Hot Terrestrial,Warm Sub-Saturn} => {Warm Mini-Neptune}",0.00161899622234215,0.5,0.0032379924446843,1.56503378378378,6
+"{Hot Terrestrial,Temperate Mini-Neptune} => {Warm Mini-Neptune}",0.00134916351861846,0.625,0.00215866162978953,1.95629222972973,5
