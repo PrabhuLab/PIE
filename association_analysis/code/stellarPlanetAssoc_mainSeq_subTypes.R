@@ -30,10 +30,10 @@ planetsInitial <- planetsInitial[!(planetsInitial$PlanetType == "Other"), ]
 
 #Adding Planet Sub-Types
 planetsInitial <- planetsInitial %>% mutate("PlanetSubType" = case_when(
-  (planetsInitial$"OrbitalPeriod" < 10) ~ paste("Hot", planetsInitial$"PlanetType", sep=" "),
-  (planetsInitial$"OrbitalPeriod" >= 10) & (planetsInitial$"OrbitalPeriod" < 100) ~ paste("Warm", planetsInitial$"PlanetType", sep=" "),
-  (planetsInitial$"OrbitalPeriod" >= 100) & (planetsInitial$"OrbitalPeriod" < 1000) ~ paste("Temperate", planetsInitial$"PlanetType", sep=" "),
-  (planetsInitial$"OrbitalPeriod" >= 1000) ~ paste("Cold", planetsInitial$"PlanetType", sep=" "),
+  (planetsInitial$"OrbitalPeriod" < 10) ~ paste("Short", planetsInitial$"PlanetType", sep=" "),
+  (planetsInitial$"OrbitalPeriod" >= 10) & (planetsInitial$"OrbitalPeriod" < 100) ~ paste("Medium-Short", planetsInitial$"PlanetType", sep=" "),
+  (planetsInitial$"OrbitalPeriod" >= 100) & (planetsInitial$"OrbitalPeriod" < 1000) ~ paste("Medium-Long", planetsInitial$"PlanetType", sep=" "),
+  (planetsInitial$"OrbitalPeriod" >= 1000) ~ paste("Long", planetsInitial$"PlanetType", sep=" "),
   .default = "Other"))
 
 planetsInitial <- planetsInitial[!(planetsInitial$PlanetSubType == "Other"), ]
