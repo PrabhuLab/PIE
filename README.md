@@ -36,4 +36,4 @@ Current team in charge of the repository:
 - Vasundhara Gatne
 
 ## License
-This repository is licensed under the Apache License. Please see the LICENSE file for more information.
+This repository is licensed under the GNU Public License v3.0. Please see the LICENSE file for more information.
