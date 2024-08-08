@@ -1,0 +1,2558 @@
+ititle: "MachineLearningCarnegie"hbjnubvictryxez
+author: "Matthew Landon"
+date: "2024-06-04"
+output: html_document
+---
+
+##Introduction
+
+Greetings. My machine learning internship project for Carnegie Science this summer is based on the fundamental question of defining, categorizing, and discovering types of exoplanets using data science, machine learning, and R to determine what various types of planetary bodies exist in the universe. As of now, we have crude definitions of exoplanets that compare thousands of planetary bodies to objects like those in our solar system: "Hot Jupiters", "Mini Neptunes", "Super Earths", and so forth. The main problem with these definitions is that they fail to illustrate hidden differences between exoplanets. Thus, my work is not only to categorize other planets, but create an HR-style diagram dependent on several dimensions of planetary factors to better understand the relationships on how planets end up the way they do, their current stages in their life cycles, and what defines each one from the others.
+
+##Loading My Dataset
+
+In this section below, I'm importing data from the NASA EXoplanetary Archive. Each datapoint in the archive represents a confirmed exoplanet with measured features.
+
+
+igraph, network, ggnet, visNetwork, intergraph.
+```{r load}
+
+if(!require("installr")) install.packages('installr')
+library("installr")
+updateR(TRUE) # this will open dialog boxes to take you through the steps.
+# OR use:
+# updateR(TRUE) # this will use common defaults and will be the safest/fastest option
+if(!require("readxl")) install.packages("readxl")
+library("readxl")
+if(!require("psych")) install.packages("psych")
+library("psych")
+if(!require("igraph")) install.packages("igraph")
+library("igraph")
+if(!require("network")) install.packages("network")
+library("network")
+if(!require("ggnetwork")) install.packages("ggnetwork")
+library("ggnetwork")
+if(!require("visNetwork")) install.packages("visNetwork")
+library("visNetwork")
+if(!require("intergraph")) install.packages("intergraph")
+library("intergraph")
+if(!require("lsa")) install.packages("lsa")
+library("lsa")
+if(!require("data.table")) install.packages("data.table")
+library("data.table")
+if(!require("dplyr")) install.packages("dplyr")
+library("dplyr")
+
+NEA <- read.csv("PSCompPars_2024.06.20_10.44.42.csv")
+#Archive
+
+#View(NEA)
+
+```
+##Data Pre-Processing
+
+In the next section, I fill in undefined entries and drop unwanted rows and columns within my excel file.
+
+NOTE: Multiple 2D plots of different variables of interest (mass v radius) (distance v surface temperature),  think about the similarity index. Mike wont be at Abelson until 2nd half of Friday. Available over email. Add 2D plots to slides. Later add network plots on another slide for safekeeping and presentations wednesday and at end of summer. Field, hole in field, my method/solution to that hole in field, recap/impact(?)
+
+``` {r preprocess}
+
+NEA <- NEA[NEA$pl_radj_reflink != "<a refstr=CALCULATED_VALUE href=/docs/composite_calc.html target=_blank>Calculated Value</a>",]
+
+NEA <- NEA[NEA$pl_radj_reflink != "<a refstr=CALCULATED_VALUE href=/docs/pscp_calc.html target=_blank>Calculated Value</a>",]
+
+NEA <- NEA[NEA$pl_bmassj_reflink != "<a refstr=CALCULATED_VALUE href=/docs/composite_calc.html target=_blank>Calculated Value</a>",]
+
+NEA <- NEA[NEA$pl_bmassj_reflink != "<a refstr=CALCULATED_VALUE href=/docs/pscp_calc.html target=_blank>Calculated Value</a>",]
+
+#View(NEA)
+```
+##Feature Engineering
+
+In the next section I define variables from the archive that represent common planetary features. Exploratory Analysis in R + Network Tutorial
+
+```{r feature_engineering}
+#feature engineering
+
+#removing M-R Relationship Planets
+
+#NEA <- NEA[NEA$pl_bmassprov != "M-R relationship", ]
+#NEA <- NEA[NEA$pl_bmassprov != "Msini", ]
+
+
+#defining planetary features
+Radius <- NEA$pl_radj #Jupiter Radii
+Mass <- NEA$pl_bmassj #Jupiter Mass
+Density <- NEA$pl_dens
+Density <- Mass/(3.14*(4/3)*(Radius^3))
+Temp <- NEA$pl_eqt #Surface Temperature in Kelvin
+Insol <- NEA$pl_insol
+Dist <- NEA$pl_orbsmax #Semi-Major Axis in AU
+Ecc <- NEA$pl_orbeccen #0 = Circular, #1 = Linear
+Period <- NEA$pl_orbper #Orbital Period in Earth Days
+StarTemp <- NEA$st_teff
+StarMass <- NEA$st_mass
+StarMetal <- NEA$st_met
+StarRadius <- NEA$st_rad
+StarLum <- NEA$st_lum
+StarAge <- NEA$st_age
+NumStar <- NEA$sy_snum
+NumPlanet <- NEA$sy_pnum #Neighbors? (Neighboring Planets)
+
+```
+
+What defines the similarity of a property between two planets (when do planets have a similar size or temperature)
+
+##Modeling
+
+#2D Comparison Plotting
+
+```{r 2D Plotting}
+#2D Plots
+
+#Mass and Radius of Planets
+plot(Mass, Radius, xlab = "Mass (Jupiter)", ylab = "Radius (Jupiter)", main = "Mass v.s. Radius")
+
+plot(log10(Mass), log10(Radius), xlab = "Mass Log_10 (Jupiter)", ylab = "Radius_Log_10 (Jupiter)", main = "Mass v.s. Radius")
+
+#Distance and Surface Temperature of Planet
+plot(Dist, Temp, xlab = "Distance (AU)", ylab = "Surface Temperature (Kelvin)", main = "Distance v.s. Surface Temperature")
+
+#Distance and Surface Temperature
+plot(log10(Dist), log10(Temp), xlab = "Distance (AU)", ylab = "Surface Temperature (Kelvin)", main = "Distance v.s. Surface Temperature")
+
+#Star Mass vs Planet Mass
+plot(StarMass, Mass, xlab = "Star Mass (Solar)", ylab = "Mass (Jupiter)", main = "Star Mass v.s. Planet Mass")
+
+plot(log10(StarMass), log10(Mass), xlab = "Star Mass (Solar)", ylab = "Mass (Jupiter)", main = "Star Mass v.s. Planet Mass")
+
+#Star Metalicity v.s. Planet Mass
+#plot(StarMetal, Mass, xlab = "Star Metallicity", ylab = "Mass (Jupiter)", main = "Star Metalicity v.s. Planet Mass")
+
+plot(log10(StarMetal), log10(Mass), xlab = "Star Metalicity", ylab = "Mass (Jupiter)", main = "Star Metalicity v.s. Planet Mass")
+
+#Star Temperature vs Eccentricity
+plot(StarMass, Ecc, xlab = "Star Mass (Solar)", ylab = "Mass (Jupiter)", main = "Star Mass v.s. Eccentricity")
+
+#Star Temperature vs Distance
+plot(StarTemp, Dist, xlab = "Star Temp (Kelvin)", ylab = "Distance (AU)", main = "Star Temp v.s. Distance")
+
+plot(log10(StarTemp), log10(Dist), xlab = "Star Temp (Kelvin)", ylab = "Distance (AU)", main = "Star Temp v.s. Distance")
+```
+#1D Scatter Plot
+``` {r 1D Scatter Plot}
+
+NEA$pl_bmassj_log <- log(NEA[,30])
+NEA$pl_radj_log <- log(NEA[,21])
+#NEA$pl_orbsmax_log <- log(NEA[,16]) #Decide on Converting AU to km to take log of it
+NEA$pl_eqt_log <- log(NEA[,48])
+#NEA$pl_eccentricity_log <- log(NEA$pl_orbeccen) #Is there really a need to do the log of eccentricity?
+NEA$pl_orbper_log <- log(NEA[,9])
+NEA$st_teff_log <- log(NEA[,66])
+NEA$st_rad_log <- log(NEA[,70])
+NEA$st_mass_log <- log(NEA[,74])
+
+library(psych)
+
+pairs.panels(NEA[,c(107:113)], 
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+```
+Add more dimensions, make a 5000 1-0 matrix using some defined threshold (binning) for similar temperatures, and make an igraph network in R using adjacency matrices.
+
+#Hot Jupiter Table
+
+```{r hot jupiters}
+
+HotJupiters <- subset(NEA, pl_bmassj >= 0.36 & pl_bmassj <= 13.6 & pl_orbper < 100)
+
+#Missing Values
+HotJupiters <- HotJupiters[!is.na(HotJupiters$pl_radj), ]
+HotJupiters <- HotJupiters[complete.cases(HotJupiters[, c("pl_eqt", "pl_bmassj", "pl_radj", "pl_orbper")]), ]
+
+
+HotJupiters <- HotJupiters %>%
+  filter(pl_name != "K2-137 b") #Removing K2-137 b which is a terrestrial planet.
+
+HotJupiters <- HotJupiters %>%
+  filter(pl_name != "KELT-9 b") #Removing KELT-9 b which is has its atmosphere boiling away for how hot it is.
+
+View(HotJupiters)
+#write.csv(HotJupiters, file = "HotJupiters_subset.csv")
+
+```
+
+#Temperature Tables
+
+Here, I'm creating Tables for Temperature in regards to all exoplanets and Hot Jupiters.
+```{r temp table}
+
+threshold <- 0.05
+temptable <- matrix(0, nrow = 1412, ncol = 1412)
+colnames(temptable) <- NEA$pl_name
+rownames(temptable) <- NEA$pl_name
+
+
+for (j in 1:1412) {
+  for (i in 1:1412) {
+    if (!is.na(NEA$pl_eqt[i]) & !is.na(NEA$pl_eqt[j])) {
+      if (abs(NEA$pl_eqt[i] - NEA$pl_eqt[j]) / NEA$pl_eqt[i] < threshold) {
+        temptable[i, j] <- 1
+      }
+      else {
+        temptable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+```{r Hot Jupiters temptable}
+
+threshold <- 0.05
+HJtemptable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtemptable) <- HotJupiters$pl_name
+rownames(HJtemptable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j])) {
+      if (abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) {
+        HJtemptable[i, j] <- 1
+      }
+      else {
+        HJtemptable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+
+#Radius Tables
+
+Here, I'm creating Tables for Radius in regards to all exoplanets and Hot Jupiters.
+```{r rad table}
+
+threshold <- 0.05
+radtable <- matrix(0, nrow = 1412, ncol = 1412)
+colnames(radtable) <- NEA$pl_name
+rownames(radtable) <- NEA$pl_name
+
+
+for (j in 1:1412) {
+  for (i in 1:1412) {
+    if (!is.na(NEA$pl_radj[i]) & !is.na(NEA$pl_radj[j])) {
+      if (abs(NEA$pl_radj[i] - NEA$pl_radj[j]) / NEA$pl_radj[i] < threshold) {
+        radtable[i, j] <- 1
+      }
+      else {
+        radtable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+```{r Hot Jupiters radtable}
+
+threshold <- 0.05
+HJradtable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJradtable) <- HotJupiters$pl_name
+rownames(HJradtable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j])) {
+      if (abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) {
+        HJradtable[i, j] <- 1
+      }
+      else {
+        HJradtable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+#Mass Tables
+
+Here, I'm creating Tables for Mass in regards to all exoplanets and Hot Jupiters.
+```{r mass table}
+
+threshold <- 0.05
+masstable <- matrix(0, nrow = 1412, ncol = 1412)
+colnames(masstable) <- NEA$pl_name
+rownames(masstable) <- NEA$pl_name
+
+
+for (j in 1:1412) {
+  for (i in 1:1412) {
+    if (!is.na(NEA$pl_bmassj[i]) & !is.na(NEA$pl_bmassj[j])) {
+      if (abs(NEA$pl_bmassj[i] - NEA$pl_bmassj[j]) / NEA$pl_bmassj[i] < threshold) {
+        masstable[i, j] <- 1
+      }
+      else {
+        masstable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+```{r Hot Jupiters mass table}
+
+threshold <- 0.05
+HJmasstable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJmasstable) <- HotJupiters$pl_name
+rownames(HJmasstable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j])) {
+      if (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold) {
+        HJmasstable[i, j] <- 1
+      }
+      else {
+        HJmasstable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+#Orbital Period Tables
+
+Here, I'm creating Tables for Radius in regards to all exoplanets and Hot Jupiters.
+```{r orbital period table}
+
+threshold <- 0.05
+orbpertable <- matrix(0, nrow = 1412, ncol = 1412)
+colnames(orbpertable) <- NEA$pl_name
+rownames(orbpertable) <- NEA$pl_name
+
+
+for (j in 1:1412) {
+  for (i in 1:1412) {
+    if (!is.na(NEA$pl_orbper[i]) & !is.na(NEA$pl_orbper[j])) {
+      if (abs(NEA$pl_orbper[i] - NEA$pl_orbper[j]) / NEA$pl_orbper[i] < threshold) {
+        orbpertable[i, j] <- 1
+      }
+      else {
+        orbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+```{r Hot Jupiters orbital period table}
+
+threshold <- 0.05
+HJorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJorbpertable) <- HotJupiters$pl_name
+rownames(HJorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold) {
+        HJorbpertable[i, j] <- 1
+      }
+      else {
+        HJorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+```
+
+
+#1D Network Plots
+
+Subset the hot-jupiters from the exoplanet archives. Export each table into a csv
+Formal definition of a hot jupiters: 0.36-13.6 Mj, <100 Days. Familiarize yourself with igraph.
+
+
+Here, I'm plotting the network relationships between Hot Jupiters for Temperature, Mass, Orbital Period, and Radius.
+
+NOTE: Ask about having trouble with color coating neural networks and the gray material around the nodes.
+``` {r 1D Network Plots}
+
+library("igraph")
+#exonet <- graph_from_adjacency_matrix(temptable)
+HJtempnet <- graph_from_adjacency_matrix(HJtemptable)
+HJradnet <- graph_from_adjacency_matrix(HJradtable)
+HJmassnet <- graph_from_adjacency_matrix(HJmasstable)
+HJorbpernet <- graph_from_adjacency_matrix(HJorbpertable)
+#plot(exonet)
+vertex.size = 3
+degrees <- degree(HJtempnet)
+colors <- colorRampPalette(c("blue","red"))(100)  # Adjust the number of colors as needed
+vertex.colors <- colors[cut(HotJupiters$pl_eqt, breaks = 100)]
+
+vertex.colors <- adjustcolor(vertex.colors, alpha.f = 0.6)  # Set alpha value between 0 (transparent) and 1 (opaque)
+
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+
+color.bar <- function(lut, min, max=-min, nticks=11, ticks=seq(min, max, len=nticks), title='') {
+  scale = (length(lut)-1)/(max-min)
+  
+  plot(c(0,10), c(min,max), type='n', bty='n', xaxt='n', xlab='', yaxt='n', ylab='', main=title)
+  axis(2, ticks, las=1)
+  for (i in 1:(length(lut)-1)) {
+    y = (i-1)/scale + min
+    rect(0,y,10,y+1/scale, col=lut[i], border=NA)
+  }
+}
+
+
+coords1 <- layout.fruchterman.reingold(HJtempnet)
+coords2 <- layout.fruchterman.reingold(HJradnet)
+coords3 <- layout.fruchterman.reingold(HJmassnet)
+coords4 <- layout.fruchterman.reingold(HJorbpernet)
+
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempnet), vertex.label=NA, main = "Hot Jupiter Temperature Network", vertex.size = HotJupiters$pl_radj*6, layout = coords1, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJradnet), main = "Hot Jupiter Radius Network", vertex.label=NA, vertex.size = HotJupiters$pl_radj*6, layout = coords2, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJmassnet), main = "Hot Jupiter Mass Network", vertex.label=NA, vertex.size = HotJupiters$pl_radj*6, layout = coords3, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJorbpernet), main = "Hot Jupiter Orbital Period Network", vertex.label=NA, vertex.size = HotJupiters$pl_radj*6, layout = coords4, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+#Ultimate Color Gradient (Meant for temperatures from 0 K to 10000 K)
+#color.bar(colorRampPalette(c("purple4","purple2","blue","lightblue3","gray","green","red", "orange", "yellow", "lightyellow", "white", "lightblue", "skyblue2"))(100), 0, 10000)
+
+
+```
+
+Exclude Self-loops;size by radius (0.057 to 2.100) (Do I need a reference like the one for temperature?), and connect them based on mass (0.36 to 12.90).
+
+Combine Temperature Thresholds with the threshold of mass for example. Combine multiple thresholds together to break it up more. Combine these plots.
+
+
+#Multi-Dimensional Network Plots
+
+Now, I'll pivot towards incorporating multiple planetary features into my model. For example here, I'll be combining radius and temperature and later generating networks from the connections made.
+
+
+```{r Hot Jupiters tempradtable}
+
+threshold <- 0.05
+HJtempradtable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempradtable) <- HotJupiters$pl_name
+rownames(HJtempradtable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold)) {
+        HJtempradtable[i, j] <- 1
+      }
+      else {
+        HJtempradtable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempradtable)
+```
+
+```{r Hot Jupiters tempmasstable}
+
+threshold <- 0.1
+HJtempmasstable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempmasstable) <- HotJupiters$pl_name
+rownames(HJtempmasstable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold)) {
+        HJtempmasstable[i, j] <- 1
+      }
+      else {
+        HJtempmasstable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempmasstable)
+```
+
+```{r Hot Jupiters HJtemporbpertable}
+
+threshold <- 0.05
+HJtemporbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtemporbpertable) <- HotJupiters$pl_name
+rownames(HJtemporbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJtemporbpertable[i, j] <- 1
+      }
+      else {
+        HJtemporbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtemporbpertable)
+```
+
+```{r Hot Jupiters HJradmasstable}
+
+threshold <- 0.1
+HJradmasstable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJradmasstable) <- HotJupiters$pl_name
+rownames(HJradmasstable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j])) {
+      if ((abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold)) {
+        HJradmasstable[i, j] <- 1
+      }
+      else {
+        HJradmasstable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJradmasstable)
+```
+
+```{r Hot Jupiters radorbpertable}
+
+threshold <- 0.1
+HJradorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJradorbpertable) <- HotJupiters$pl_name
+rownames(HJradorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJradorbpertable[i, j] <- 1
+      }
+      else {
+        HJradorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJradorbpertable)
+```
+
+```{r Hot Jupiters massorbpertable}
+
+threshold <- 0.1
+HJmassorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJmassorbpertable) <- HotJupiters$pl_name
+rownames(HJmassorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJmassorbpertable[i, j] <- 1
+      }
+      else {
+        HJmassorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJmassorbpertable)
+```
+
+```{r 2D Network Plots}
+
+HJtempradnet <- graph_from_adjacency_matrix(HJtempradtable)
+HJtempmassnet <- graph_from_adjacency_matrix(HJtempmasstable)
+HJtemporbpernet <- graph_from_adjacency_matrix(HJtemporbpertable)
+HJradmassnet <- graph_from_adjacency_matrix(HJradmasstable)
+HJradorbpernet <- graph_from_adjacency_matrix(HJradorbpertable)
+HJmassorbpernet <- graph_from_adjacency_matrix(HJmassorbpertable)
+
+value<-runif(1)
+n<-6
+size_vec<-seq_len(n)
+sizeCut<-cut(value,n)
+vertex.size<-size_vec[sizeCut]
+layout_fr <- layout.fruchterman.reingold
+edge.colors <- adjustcolor("darkgray", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+
+coords5 <- layout_with_fr(HJtempradnet)
+coords6 <- layout.fruchterman.reingold(HJtempmassnet)
+coords7 <- layout.fruchterman.reingold(HJtemporbpernet)
+coords8 <- layout.fruchterman.reingold(HJradmassnet)
+coords9 <- layout.fruchterman.reingold(HJradorbpernet)
+coords10 <- layout.fruchterman.reingold(HJmassorbpernet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempradnet), vertex.label=NA, main = "Hot Jupiter Temperature-Radius Network (5%)", vertex.size = HotJupiters$pl_radj*6, layout = coords5, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempmassnet), vertex.label=NA, main = "Hot Jupiter Temperature-Mass Network (10%)", vertex.size = HotJupiters$pl_radj*6, layout = coords6, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtemporbpernet), vertex.label=NA, main = "Hot Jupiter Temperature-Orbital Period Network (5%)", vertex.size = HotJupiters$pl_radj*6, layout = coords7, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJradmassnet), vertex.label=NA, main = "Hot Jupiter Radius-Mass Network (10%)", vertex.size = HotJupiters$pl_radj*6, layout = coords8, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJradorbpernet), vertex.label=NA, main = "Hot Jupiter Radius-Orbital Period Network (10%)", vertex.size = HotJupiters$pl_radj*6, layout = coords9, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJmassorbpernet), vertex.label=NA, main = "Hot Jupiter Mass-Orbital Period Network (10%)", vertex.size = HotJupiters$pl_radj*6, layout = coords10, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+#layout(matrix(c(1), nrow=1), widths=c(1))
+#legend('left', legend = sizeCut, title = "Vertex Sizes", pch = 21, pt.cex = sqrt(size_vec) * 0.8, col = 'black')
+
+```
+#3D For Loop Network Plots
+
+```{r Hot Jupiters HJtempradmasstable}
+
+threshold <- 0.15
+HJtempradmasstable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempradmasstable) <- HotJupiters$pl_name
+rownames(HJtempradmasstable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold)) {
+        HJtempradmasstable[i, j] <- 1
+      }
+      else {
+        HJtempradmasstable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempradmasstable)
+```
+
+```{r Hot Jupiters HJtempradorbpertable}
+
+threshold <- 0.15
+HJtempradorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempradorbpertable) <- HotJupiters$pl_name
+rownames(HJtempradorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJtempradorbpertable[i, j] <- 1
+      }
+      else {
+        HJtempradorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempradorbpertable)
+```
+
+```{r Hot Jupiters HJtempmassorbpertable}
+
+threshold <- 0.15
+HJtempmassorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempmassorbpertable) <- HotJupiters$pl_name
+rownames(HJtempmassorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJtempmassorbpertable[i, j] <- 1
+      }
+      else {
+        HJtempmassorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempmassorbpertable)
+```
+
+```{r Hot Jupiters HJradmassorbpertable}
+
+threshold <- 0.15
+HJradmassorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJradmassorbpertable) <- HotJupiters$pl_name
+rownames(HJradmassorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJradmassorbpertable[i, j] <- 1
+      }
+      else {
+        HJradmassorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJradmassorbpertable)
+```
+
+
+```{r 3D Network Plots}
+
+HJtempradmassnet <- graph_from_adjacency_matrix(HJtempradmasstable)
+HJtempradorbpernet <- graph_from_adjacency_matrix(HJtempradorbpertable)
+HJtempmassorbpernet <- graph_from_adjacency_matrix(HJtempmassorbpertable)
+HJradmassorbpernet <- graph_from_adjacency_matrix(HJradmassorbpertable)
+
+degree_zero_nodes11 <- V(HJtempradmassnet)[degree(HJtempradmassnet) == 0]
+HJtempradmassnet <- delete_vertices(HJtempradmassnet, degree_zero_nodes11)
+
+while (any(degree(HJtempradmassnet) == 0)) {
+  HJtempradmassnet <- delete.vertices(HJtempradmassnet, V(HJtempradmassnet)[degree(HJtempradmassnet) == 0])
+}
+
+degree_zero_nodes12 <- V(HJtempradorbpernet)[degree(HJtempradorbpernet) == 0]
+HJtempradorbpernet <- delete_vertices(HJtempradorbpernet, degree_zero_nodes12)
+
+while (any(degree(HJtempradorbpernet) == 0)) {
+  HJtempradorbpernet <- delete.vertices(HJtempradorbpernet, V(HJtempradorbpernet)[degree(HJtempradorbpernet) == 0])
+}
+
+degree_zero_nodes13 <- V(HJtempmassorbpernet)[degree(HJtempmassorbpernet) == 0]
+HJtempmassorbpernet <- delete_vertices(HJtempmassorbpernet, degree_zero_nodes13)
+
+while (any(degree(HJtempmassorbpernet) == 0)) {
+  HJtempmassorbpernet <- delete.vertices(HJtempmassorbpernet, V(HJtempmassorbpernet)[degree(HJtempmassorbpernet) == 0])
+}
+
+degree_zero_nodes14 <- V(HJradmassorbpernet)[degree(HJradmassorbpernet) == 0]
+HJradmassorbpernet <- delete_vertices(HJradmassorbpernet, degree_zero_nodes14)
+
+while (any(degree(HJradmassorbpernet) == 0)) {
+  HJradmassorbpernet <- delete.vertices(HJradmassorbpernet, V(HJradmassorbpernet)[degree(HJradmassorbpernet) == 0])
+}
+
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+
+coords11 <- layout.fruchterman.reingold(HJtempradmassnet)
+coords12 <- layout.fruchterman.reingold(HJtempradorbpernet)
+coords13 <- layout.fruchterman.reingold(HJtempmassorbpernet)
+coords14 <- layout.fruchterman.reingold(HJradmassorbpernet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempradmassnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius-Mass Network (15%)", vertex.size = HotJupiters$pl_radj*6, layout = coords11, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempradorbpernet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius-OrbPer Network (15%)", vertex.size = HotJupiters$pl_radj*6, layout = coords12, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempmassorbpernet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temperature-Mass-OrbPer Network (15%)", vertex.size = HotJupiters$pl_radj*6, layout = coords13, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJradmassorbpernet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Radius-Mass-OrbPer Network", vertex.size = HotJupiters$pl_radj*6, layout = coords14, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+```
+
+Think about non-circular networks. Add in a legend for radius as I did for temperature.
+
+#4D For Loop Network Plot and Table
+
+```{r Hot Jupiters HJtempradmassorbpertable}
+
+threshold <- 0.25
+HJtempradmassorbpertable <- matrix(0, nrow = 560, ncol = 560)
+colnames(HJtempradmassorbpertable) <- HotJupiters$pl_name
+rownames(HJtempradmassorbpertable) <- HotJupiters$pl_name
+
+
+for (j in 1:560) {
+  for (i in 1:560) {
+    if (!is.na(HotJupiters$pl_eqt[i]) & !is.na(HotJupiters$pl_eqt[j]) & !is.na(HotJupiters$pl_radj[i]) & !is.na(HotJupiters$pl_radj[j]) & !is.na(HotJupiters$pl_bmassj[i]) & !is.na(HotJupiters$pl_bmassj[j]) & !is.na(HotJupiters$pl_orbper[i]) & !is.na(HotJupiters$pl_orbper[j])) {
+      if ((abs(HotJupiters$pl_eqt[i] - HotJupiters$pl_eqt[j]) / HotJupiters$pl_eqt[i] < threshold) & (abs(HotJupiters$pl_radj[i] - HotJupiters$pl_radj[j]) / HotJupiters$pl_radj[i] < threshold) & (abs(HotJupiters$pl_bmassj[i] - HotJupiters$pl_bmassj[j]) / HotJupiters$pl_bmassj[i] < threshold) & (abs(HotJupiters$pl_orbper[i] - HotJupiters$pl_orbper[j]) / HotJupiters$pl_orbper[i] < threshold)) {
+        HJtempradmassorbpertable[i, j] <- 1
+      }
+      else {
+        HJtempradmassorbpertable[i, j] <- 0
+      }
+    }
+  }
+}
+
+#View(HJtempradmassorbpertable)
+```
+
+```{r 4D Network Plot}
+
+HJtempradmassorbpernet <- graph_from_adjacency_matrix(HJtempradmassorbpertable)
+
+degree_zero_nodes <- V(HJtempradmassorbpernet)[degree(HJtempradmassorbpernet) == 0]
+HJtempradmassorbpernet <- delete_vertices(HJtempradmassorbpernet, degree_zero_nodes)
+
+while (any(degree(HJtempradmassorbpernet) == 0)) {
+  HJtempradmassorbpernet <- delete_vertices(HJtempradmassorbpernet, which(degree(HJtempradmassorbpernet) == 0))
+}
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+coords15 <- layout.fruchterman.reingold(HJtempradmassorbpernet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(HJtempradmassorbpernet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius-Mass-OrbPer Network", vertex.size = HotJupiters$pl_radj*6, layout = coords15, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+```
+#2D Cosine Similarity Tables and Plots
+
+```{r 2D_Cosine Similarity Table TR}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+ # x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj")],2,normalized)
+TR_HotJupiters <- t(normalized_columns)
+colnames(TR_HotJupiters) <- HotJupiters$pl_name
+rownames(TR_HotJupiters) <- c("pl_eqt", "pl_radj")
+cosine_TR_HotJupiters <- cosine(as.matrix(TR_HotJupiters))
+
+
+#View(cosine_TR_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TR_HotJupiters[i, j])) {
+      if (cosine_TR_HotJupiters[i, j] < 0.95) {
+        cosine_TR_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TR_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+
+```{r 2D_Cosine Similarity Table TM}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_bmassj")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_bmassj")],2,normalized)
+TM_HotJupiters <- t(normalized_columns)
+colnames(TM_HotJupiters) <- HotJupiters$pl_name
+rownames(TM_HotJupiters) <- c("pl_eqt", "pl_bmassj")
+cosine_TM_HotJupiters <- cosine(as.matrix(TM_HotJupiters))
+
+
+#View(cosine_TM_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TM_HotJupiters[i, j])) {
+      if (cosine_TM_HotJupiters[i, j] < 0.95) {
+        cosine_TM_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TM_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 2D_Cosine Similarity Table TO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_orbper")],2,normalized)
+TO_HotJupiters <- t(normalized_columns)
+colnames(TO_HotJupiters) <- HotJupiters$pl_name
+rownames(TO_HotJupiters) <- c("pl_eqt", "pl_orbper")
+cosine_TO_HotJupiters <- cosine(as.matrix(TO_HotJupiters))
+
+
+#View(cosine_TO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TO_HotJupiters[i, j])) {
+      if (cosine_TO_HotJupiters[i, j] < 0.95) {
+        cosine_TO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 2D_Cosine Similarity Table RM}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_radj","pl_bmassj")]
+normalized_columns <-  apply(selected_columns[,c("pl_radj","pl_bmassj")],2,normalized)
+RM_HotJupiters <- t(normalized_columns)
+colnames(RM_HotJupiters) <- HotJupiters$pl_name
+rownames(RM_HotJupiters) <- c("pl_radj","pl_bmassj")
+cosine_RM_HotJupiters <- cosine(as.matrix(RM_HotJupiters))
+
+
+#View(cosine_RM_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_RM_HotJupiters[i, j])) {
+      if (cosine_RM_HotJupiters[i, j] < 0.95) {
+        cosine_RM_HotJupiters[i, j] <- 0
+      } else {
+        cosine_RM_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 2D_Cosine Similarity Table RO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_radj","pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_radj","pl_orbper")],2,normalized)
+RO_HotJupiters <- t(normalized_columns)
+colnames(RO_HotJupiters) <- HotJupiters$pl_name
+rownames(RO_HotJupiters) <- c("pl_radj","pl_orbper")
+cosine_RO_HotJupiters <- cosine(as.matrix(RO_HotJupiters))
+
+
+#View(cosine_RO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_RO_HotJupiters[i, j])) {
+      if (cosine_RO_HotJupiters[i, j] < 0.95) {
+        cosine_RO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_RO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 2D_Cosine Similarity Table MO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_bmassj","pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_bmassj","pl_orbper")],2,normalized)
+MO_HotJupiters <- t(normalized_columns)
+colnames(MO_HotJupiters) <- HotJupiters$pl_name
+rownames(MO_HotJupiters) <- c("pl_bmassj","pl_orbper")
+cosine_MO_HotJupiters <- cosine(as.matrix(MO_HotJupiters))
+
+
+#View(cosine_MO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_MO_HotJupiters[i, j])) {
+      if (cosine_MO_HotJupiters[i, j] < 0.95) {
+        cosine_MO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_MO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 2D Cosine Network Plots}
+
+cosine_TR_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TR_HotJupiters)
+cosine_TM_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TM_HotJupiters)
+cosine_TO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TO_HotJupiters)
+cosine_RM_HotJupitersnet <- graph_from_adjacency_matrix(cosine_RM_HotJupiters)
+cosine_RO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_RO_HotJupiters)
+cosine_MO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_MO_HotJupiters)
+
+value<-runif(1)
+n<-6
+size_vec<-seq_len(n)
+sizeCut<-cut(value,n)
+vertex.size<-size_vec[sizeCut]
+
+coords16 <- layout.fruchterman.reingold(cosine_TR_HotJupitersnet)
+coords17 <- layout.fruchterman.reingold(cosine_TM_HotJupitersnet)
+coords18 <- layout.fruchterman.reingold(cosine_TO_HotJupitersnet)
+coords19 <- layout.fruchterman.reingold(cosine_RM_HotJupitersnet)
+coords20 <- layout.fruchterman.reingold(cosine_RO_HotJupitersnet)
+coords21 <- layout.fruchterman.reingold(cosine_MO_HotJupitersnet)
+
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TR_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords16, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TM_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Mass Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords17, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords18, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_RM_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Radius-Mass Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords19, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_RO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Radius-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords20, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_MO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Mass-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords21, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+```
+
+
+
+#3D Cosine Similarity Tables and Plots
+
+```{r 3D_Cosine Similarity Table TRM}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj", "pl_bmassj")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj", "pl_bmassj")],2,normalized)
+TRM_HotJupiters <- t(normalized_columns)
+colnames(TRM_HotJupiters) <- HotJupiters$pl_name
+rownames(TRM_HotJupiters) <- c("pl_eqt", "pl_radj", "pl_bmassj")
+cosine_TRM_HotJupiters <- cosine(as.matrix(TRM_HotJupiters))
+
+
+#View(cosine_TRM_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TRM_HotJupiters[i, j])) {
+      if (cosine_TRM_HotJupiters[i, j] < 0.95) {
+        cosine_TRM_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TRM_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+
+```{r 3D_Cosine Similarity Table TRO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj", "pl_orbper")],2,normalized)
+TRO_HotJupiters <- t(normalized_columns)
+colnames(TRO_HotJupiters) <- HotJupiters$pl_name
+rownames(TRO_HotJupiters) <- c("pl_eqt", "pl_radj", "pl_orbper")
+cosine_TRO_HotJupiters <- cosine(as.matrix(TRO_HotJupiters))
+
+
+#View(cosine_TRO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TRO_HotJupiters[i, j])) {
+      if (cosine_TRO_HotJupiters[i, j] < 0.95) {
+        cosine_TRO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TRO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 3D_Cosine Similarity Table TMO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_bmassj", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_bmassj", "pl_orbper")],2,normalized)
+TMO_HotJupiters <- t(normalized_columns)
+colnames(TMO_HotJupiters) <- HotJupiters$pl_name
+rownames(TMO_HotJupiters) <- c("pl_eqt", "pl_bmassj", "pl_orbper")
+cosine_TMO_HotJupiters <- cosine(as.matrix(TMO_HotJupiters))
+
+
+#View(cosine_TMO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TMO_HotJupiters[i, j])) {
+      if (cosine_TMO_HotJupiters[i, j] < 0.95) {
+        cosine_TMO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TMO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 3D_Cosine Similarity Table RMO}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  #x <- log(x, base)
+
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_radj", "pl_bmassj", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_radj", "pl_bmassj", "pl_orbper")],2,normalized)
+RMO_HotJupiters <- t(normalized_columns)
+colnames(RMO_HotJupiters) <- HotJupiters$pl_name
+rownames(RMO_HotJupiters) <- c("pl_radj", "pl_bmassj", "pl_orbper")
+cosine_RMO_HotJupiters <- cosine(as.matrix(RMO_HotJupiters))
+
+
+#View(cosine_RMO_HotJupiters)
+
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_RMO_HotJupiters[i, j])) {
+      if (cosine_RMO_HotJupiters[i, j] < 0.95) {
+        cosine_RMO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_RMO_HotJupiters[i, j] <- 1
+      }
+    }
+  }
+}
+```
+
+```{r 3D Cosine Network Plots}
+
+cosine_TRM_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TRM_HotJupiters)
+cosine_TRO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TRO_HotJupiters)
+cosine_TMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TMO_HotJupiters)
+cosine_RMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_RMO_HotJupiters)
+
+isolated = which(degree(cosine_TRM_HotJupitersnet)==0)
+cosine_TRM_HotJupitersnet = delete_vertices(cosine_TRM_HotJupitersnet,isolated)
+
+isolated = which(degree(cosine_TRO_HotJupitersnet)==0)
+cosine_TRO_HotJupitersnet = delete_vertices(cosine_TRO_HotJupitersnet,isolated)
+
+isolated = which(degree(cosine_TMO_HotJupitersnet)==0)
+cosine_TMO_HotJupitersnet = delete_vertices(cosine_TMO_HotJupitersnet,isolated)
+
+isolated = which(degree(cosine_RMO_HotJupitersnet)==0)
+cosine_RMO_HotJupitersnet = delete_vertices(cosine_RMO_HotJupitersnet,isolated)
+
+coords22 <- layout.fruchterman.reingold(cosine_TRM_HotJupitersnet)
+coords23 <- layout.fruchterman.reingold(cosine_TRO_HotJupitersnet)
+coords24 <- layout.fruchterman.reingold(cosine_TMO_HotJupitersnet)
+coords25 <- layout.fruchterman.reingold(cosine_RMO_HotJupitersnet)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRM_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius-Mass Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords22, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Radius-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords23, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TMO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Temp-Mass-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords24, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_RMO_HotJupitersnet), layout=layout.fruchterman.reingold, vertex.label=NA, main = "Hot Jupiter Radius-Mass-OrbPer Network (Cos)", vertex.size = HotJupiters$pl_radj*6, layout = coords25, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+
+```
+save plots, if statements for radius, play with using the size for mass.
+
+#4D Cosine Similarity Table and Plot 
+
+95%
+```{r 4D_Cosine Similarity Table (with temperature)}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper")],2,normalized)
+TRMO_HotJupiters <- t(normalized_columns)
+colnames(TRMO_HotJupiters) <- HotJupiters$pl_name
+rownames(TRMO_HotJupiters) <- c("pl_eqt","pl_radj", "pl_bmassj", "pl_orbper")
+cosine_TRMO_HotJupiters <- cosine(as.matrix(TRMO_HotJupiters))
+#View(cosine_TRMO_HotJupiters)
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TRMO_HotJupiters[i, j])) {
+      if (cosine_TRMO_HotJupiters[i, j] < 0.95) {
+        cosine_TRMO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TRMO_HotJupiters[i, j] <- 1
+      }
+    }
+      else {
+    cosine_TRMO_HotJupiters[i, j] <- 0}  
+    }
+}
+
+```
+
+```{r 4D Cosine Network Plot}
+set.seed(123)
+
+cosine_TRMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TRMO_HotJupiters)
+
+isolated = which(degree(cosine_TRMO_HotJupitersnet)==0)
+cosine_TRMO_HotJupitersnet = delete_vertices(cosine_TRMO_HotJupitersnet,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)
+
+coords26 <- layout.fruchterman.reingold(cosine_TRMO_HotJupitersnet)
+
+V(cosine_TRMO_HotJupitersnet)$Rad <- HotJupiters$pl_radj*6
+coords26 <- layout.fruchterman.reingold(cosine_TRMO_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRMO_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_TRMO_HotJupitersnet)$Rad, layout = coords26, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+
+```
+```{r 4D Cosine Network Plot}
+set.seed(123)
+
+cosine_TRMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TRMO_HotJupiters)
+
+isolated = which(degree(cosine_TRMO_HotJupitersnet)==0)
+cosine_TRMO_HotJupitersnet = delete_vertices(cosine_TRMO_HotJupitersnet,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+colors1 <- colorRampPalette(c("orange","purple"))(100)  # Adjust the number of colors as needed
+vertex.colors1 <- colors1[cut(HotJupiters$pl_orbper, breaks = 100)]
+
+vertex.colors <- adjustcolor(vertex.colors, alpha.f = 0.6)  # Set alpha value between 0 (transparent) and 1 (opaque)
+
+V(cosine_TRMO_HotJupitersnet)$Rad <- HotJupiters$pl_bmassj
+coords26 <- layout.fruchterman.reingold(cosine_TRMO_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRMO_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_TRMO_HotJupitersnet)$Rad, layout = coords26, edge.arrow.size = 0.0, vertex.color = vertex.colors1, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("orange","purple"))(100), 0.17, 98.30)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+``` {r clusters}
+set.seed(123)
+
+undirected_TRMO <- simplify(as.undirected(cosine_TRMO_HotJupitersnet))
+Louvain_Comm<-cluster_louvain(undirected_TRMO)
+
+Louvain_Comm$membership
+#cluster_leading_eigen(undirected_TRMO)
+#cluster_label_prop(undirected_TRMO)
+#cluster_walktrap(undirected_TRMO)
+
+plot(cluster_louvain(undirected_TRMO), undirected_TRMO, vertex.label=NA, vertex.size = HotJupiters$pl_radj*6)
+mtext("HJ Louvain Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+plot(cluster_leading_eigen(undirected_TRMO), undirected_TRMO, vertex.label=NA, vertex.size = V(undirected_TRMO)$Rad)
+mtext("HJ LeadingEigen Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+Make network bigger and sparser.
+
+```{r communities 95}
+
+HotJupiters$Com1 <- as.integer(Louvain_Comm$membership == 1)
+HotJupiters$Com2 <- as.integer(Louvain_Comm$membership == 2)
+HotJupiters$Com3 <- as.integer(Louvain_Comm$membership == 3)
+HotJupiters$Com4 <- as.integer(Louvain_Comm$membership == 4)
+HotJupiters$Com5 <- as.integer(Louvain_Comm$membership == 5)
+
+subset_Com1 <- subset(HotJupiters, Com1 == 1)
+subset_Com2 <- subset(HotJupiters, Com2 == 1)
+subset_Com3 <- subset(HotJupiters, Com3 == 1)
+subset_Com4 <- subset(HotJupiters, Com4 == 1)
+subset_Com5 <- subset(HotJupiters, Com5 == 1)
+
+
+
+library(psych)
+
+pairs.panels(subset_Com1[,c(9,21,30,48)], 
+             main = "Community 1", # add title to the panel
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com2[,c(9,21,30,48)],
+             main = "Community 2",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com3[,c(9,21,30,48)],
+             main = "Community 3",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com4[,c(9,21,30,48)],
+             main = "Community 4",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com5[,c(9,21,30,48)],
+             main = "Community 5",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+
+```
+``` {r vis}
+library("visNetwork")
+
+Planet_net_Simple<-simplify(cosine_TRMO_HotJupitersnet)
+
+# Example colors for each community
+community_colors <- c(
+  "rgba(255, 0, 0, 0.5)",     # Red
+  "rgba(0, 160, 0, 0.5)",     # Green
+  "rgba(0, 0, 255, 0.5)",     # Blue
+  "rgba(255, 215, 0, 0.5)",   # Gold
+  "rgba(128, 0, 128, 0.5)",   # Purple
+  "rgba(0, 255, 255, 0.5)",   # Cyan
+  "rgba(255, 165, 0, 0.5)",   # Orange
+  "rgba(255, 0, 255, 0.5)",   # Magenta
+  "rgba(128, 128, 128, 0.5)"  # Gray
+)
+
+data <- toVisNetworkData(Planet_net_Simple)
+
+
+# Add color to nodes based on their community membership
+data$nodes$color <- community_colors[Louvain_Comm$membership]
+data$nodes$size <- 10  # Adjust the size of vertices
+data$nodes$font.size <- 12  # Adjust the size of labels
+data$nodes$group <- Louvain_Comm$membership
+
+
+# Create the network visualization
+net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main = "Louvain Hot Jupiter Community Network", submain = list(text = "Based on Temperature, Orbital Period, Mass, and Radius (95% Similiarity)")) %>%
+  visOptions(selectedBy = "group") %>% 
+  #visIgraphLayout()
+  visEdges(smooth = FALSE) %>%
+  visPhysics(solver = "forceAtlas2Based", stabilization = FALSE,
+            forceAtlas2Based = list(gravitationalConstant = -500))
+
+
+visSave(net, file = "networkTRMO95.html", background = "white")
+
+```
+
+
+5 4x4 plots for the 4 features and the 5 communities (clusters) for louvain. The 1's and 0's don't look right so you must fix them by Wednesday.
+
+
+Talk to Anirudh and Mike about this. Why are there so many ones after normalization? Tweak 0.95 threshold for cosine and add insolation, cluster_louvain, cluster_walktrap, cluster_label_prop, cluster_leading_eigen. Community detection igraph, change color and size to mass and orbital period
+
+```{r 4D_Cosine Similarity Table}
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper")]
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper")],2,normalized)
+TRMO_HotJupiters <- t(normalized_columns)
+colnames(TRMO_HotJupiters) <- HotJupiters$pl_name
+rownames(TRMO_HotJupiters) <- c("pl_eqt","pl_radj", "pl_bmassj", "pl_orbper")
+cosine_TRMO_HotJupiters1 <- cosine(as.matrix(TRMO_HotJupiters))
+#View(cosine_TRMO_HotJupiters1)
+
+for (i in 1:560) {
+  for (j in 1:560) {
+    if (!is.na(cosine_TRMO_HotJupiters1[i, j])) {
+      if (cosine_TRMO_HotJupiters1[i, j] < 0.97) {
+        cosine_TRMO_HotJupiters1[i, j] <- 0
+      } else {
+        cosine_TRMO_HotJupiters1[i, j] <- 1
+      }
+    }
+    else {
+    cosine_TRMO_HotJupiters[i, j] <- 0}  
+  }
+}
+
+```
+
+```{r 4D Cosine Network Plot 97%}
+
+cosine_TRMO_HotJupiters1net <- graph_from_adjacency_matrix(cosine_TRMO_HotJupiters1)
+
+isolated = which(degree(cosine_TRMO_HotJupiters1net)==0)
+cosine_TRMO_HotJupiters1net = delete_vertices(cosine_TRMO_HotJupiters1net,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)
+
+coords27 <- layout.fruchterman.reingold(cosine_TRMO_HotJupiters1net)
+
+V(cosine_TRMO_HotJupiters1net)$Rad <- HotJupiters$pl_radj*6
+coords27 <- layout.fruchterman.reingold(cosine_TRMO_HotJupiters1net)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRMO_HotJupiters1net), vertex.label=NA, vertex.size = V(cosine_TRMO_HotJupiters1net)$Rad, layout = coords27, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 347, 4050)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network 97%", outer=TRUE, cex=1.5, line=-1)
+
+
+```
+
+
+```{r 4D Cosine Network Plot}
+
+cosine_TRMO_HotJupiters1net <- graph_from_adjacency_matrix(cosine_TRMO_HotJupiters1)
+
+isolated = which(degree(cosine_TRMO_HotJupiters1net)==0)
+cosine_TRMO_HotJupiters1net = delete_vertices(cosine_TRMO_HotJupiters1net,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)
+
+colors1 <- colorRampPalette(c("orange","purple"))(100)  # Adjust the number of colors as needed
+vertex.colors1 <- colors1[cut(HotJupiters$pl_orbper, breaks = 100)]
+
+vertex.colors <- adjustcolor(vertex.colors, alpha.f = 0.6)  # Set alpha value between 0 (transparent) and 1 (opaque)
+
+V(cosine_TRMO_HotJupiters1net)$Rad <- HotJupiters$pl_bmassj
+coords26 <- layout.fruchterman.reingold(cosine_TRMO_HotJupiters1net)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_TRMO_HotJupiters1net), vertex.label=NA, vertex.size = V(cosine_TRMO_HotJupiters1net)$Rad, layout = coords26, edge.arrow.size = 0.0, vertex.color = vertex.colors1, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("orange","purple"))(100), 0.17, 98.30)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+``` {r clusters}
+
+undirected_TRMO1 <- simplify(as.undirected(cosine_TRMO_HotJupiters1net))
+Louvain_Comm1 <- cluster_louvain(undirected_TRMO1)
+
+Louvain_Comm1$membership
+
+layout_coords <- layout_nicely(undirected_TRMO1)
+
+plot(cluster_louvain(undirected_TRMO1), undirected_TRMO1, layout = layout_coords, vertex.label = NA, vertex.size = HotJupiters$pl_radj * 6)
+mtext("HJ Louvain Temp-Rad-Mass-OrbPer Network", outer = TRUE, cex = 1.5, line = -1)
+
+plot(cluster_leading_eigen(undirected_TRMO1), undirected_TRMO1, layout = layout_coords, vertex.label = NA, vertex.size = V(undirected_TRMO1)$Rad)
+mtext("HJ LeadingEigen Temp-Rad-Mass-OrbPer Network", outer = TRUE, cex = 1.5, line = -1)
+
+
+```
+
+```{r communities 97}
+
+HotJupiters$Com1_1 <- as.integer(Louvain_Comm1$membership == 1)
+HotJupiters$Com2_1 <- as.integer(Louvain_Comm1$membership == 2)
+HotJupiters$Com3_1 <- as.integer(Louvain_Comm1$membership == 3)
+HotJupiters$Com4_1 <- as.integer(Louvain_Comm1$membership == 4)
+HotJupiters$Com5_1 <- as.integer(Louvain_Comm1$membership == 5)
+HotJupiters$Com6_1 <- as.integer(Louvain_Comm1$membership == 6)
+HotJupiters$Com7_1 <- as.integer(Louvain_Comm1$membership == 7)
+HotJupiters$Com8_1 <- as.integer(Louvain_Comm1$membership == 8)
+HotJupiters$Com9_1 <- as.integer(Louvain_Comm1$membership == 9)
+
+
+subset_Com1 <- subset(HotJupiters, Com1_1 == 1)
+subset_Com2 <- subset(HotJupiters, Com2_1 == 1)
+subset_Com3 <- subset(HotJupiters, Com3_1 == 1)
+subset_Com4 <- subset(HotJupiters, Com4_1 == 1)
+subset_Com5 <- subset(HotJupiters, Com5_1 == 1)
+subset_Com6 <- subset(HotJupiters, Com6_1 == 1)
+subset_Com7 <- subset(HotJupiters, Com7_1 == 1)
+subset_Com8 <- subset(HotJupiters, Com8_1 == 1)
+subset_Com9 <- subset(HotJupiters, Com9_1 == 1)
+
+
+library(psych)
+
+pairs.panels(subset_Com1[,c(9,21,30,48)], 
+             main = "Community 1", # add title to the panel
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com2[,c(9,21,30,48)],
+             main = "Community 2",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com3[,c(9,21,30,48)],
+             main = "Community 3",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com4[,c(9,21,30,48)],
+             main = "Community 4",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com5[,c(9,21,30,48)],
+             main = "Community 5",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com6[,c(9,21,30,48)],
+             main = "Community 6",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com7[,c(9,21,30,48)],
+             main = "Community 7",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+```
+VisualNetwork
+``` {r vis}
+library("visNetwork")
+
+Planet_net_Simple<-simplify(cosine_TRMO_HotJupitersnet)
+
+# Example colors for each community
+community_colors <- c(
+  "rgba(255, 0, 0, 0.5)",     # Red
+  "rgba(0, 160, 0, 0.5)",     # Green
+  "rgba(0, 0, 255, 0.5)",     # Blue
+  "rgba(255, 215, 0, 0.5)",   # Gold
+  "rgba(128, 0, 128, 0.5)",   # Purple
+  "rgba(0, 255, 255, 0.5)",   # Cyan
+  "rgba(255, 165, 0, 0.5)",   # Orange
+  "rgba(255, 0, 255, 0.5)",   # Magenta
+  "rgba(128, 128, 128, 0.5)"  # Gray
+)
+
+data <- toVisNetworkData(Planet_net_Simple)
+
+
+# Add color to nodes based on their community membership
+data$nodes$color <- community_colors[Louvain_Comm$membership]
+data$nodes$size <- 10  # Adjust the size of vertices
+data$nodes$font.size <- 12  # Adjust the size of labels
+data$nodes$group <- Louvain_Comm$membership
+
+
+# Create the network visualization
+net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main = "Louvain Hot Jupiter Community Network", submain = list(text = "Based on Temperature, Orbital Period, Mass, and Radius (95% Similiarity)")) %>%
+  visOptions(selectedBy = "group") %>%
+  visIgraphLayout()
+  # visEdges(smooth = FALSE) %>%
+  # visPhysics(solver = "forceAtlas2Based", stabilization = FALSE, 
+  #           forceAtlas2Based = list(gravitationalConstant = -500))
+
+
+visSave(net, file = "network.html", background = "white")
+
+```
+
+Now we will replace temperature with insolation to check how robust the model is!
+
+
+```{r Filling in Insolation}
+#L[W}/4pia[m]^2 = I[W/m^2] 
+#a = distance in meters, L = Watts in Joules
+
+library("dplyr")
+
+G <- 39.478  # Gravitational constant in AU^3 yr^-2 M_sun^-1
+
+HotJupiters <- HotJupiters %>%
+  mutate(
+    P_years = pl_orbper / 365.25,
+    pl_orbsmax_calculated = ((P_years^2 * st_mass * (G/(4*3.14*3.14)))^(1/3))
+  )
+
+# Replace NA values in pl_orbsmax with values from pl_orbsmax_calculated
+HotJupiters <- HotJupiters %>%
+  mutate(
+    pl_orbsmax = ifelse(is.na(pl_orbsmax), pl_orbsmax_calculated, pl_orbsmax)
+  )
+
+
+
+HotJupiters$st_lumJ <- (10^HotJupiters$st_lum)*(3.828*10^26) #Converstion to Joules
+HotJupiters$pl_orbsmaxKM2 <- (HotJupiters$pl_orbsmax*149597870700)^2 #Converting to meters squared
+
+HotJupiters$pl_insolFill <- HotJupiters$st_lumJ/(4*3.1415*HotJupiters$pl_orbsmaxKM2)
+
+# HotJupiters <- HotJupiters %>%
+#   mutate(pl_insolFill = ifelse(is.na(pl_insolFill), pl_insol, pl_insolFill))
+#  #replacing all calculated insolation values with all available insolation values (Don't know whether to keep this or not because the true values are lower than the calculated values.)
+
+
+
+```
+
+
+```{r 4D Cosine Similarity Table (with Insolation)}
+
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_insolFill", "pl_radj", "pl_bmassj", "pl_orbper")]
+#View(selected_columns)
+normalized_columns <-  apply(selected_columns[,c("pl_insolFill", "pl_radj", "pl_bmassj", "pl_orbper")],2,normalized)
+#View(normalized_columns)
+IRMO_HotJupiters <- t(normalized_columns)
+colnames(IRMO_HotJupiters) <- HotJupiters$pl_name
+rownames(IRMO_HotJupiters) <- c("pl_insolFill","pl_radj", "pl_bmassj", "pl_orbper")
+cosine_IRMO_HotJupiters <- cosine(as.matrix(IRMO_HotJupiters))
+
+# if (is.na(cosine_IRMO_HotJupiters[i, j])) 
+#     {
+#     cosine_IRMO_HotJupiters[i, j] <- 0}
+
+
+#View(cosine_IRMO_HotJupiters)
+
+# 
+for (i in 1:ncol(cosine_IRMO_HotJupiters)) {
+  for (j in 1:ncol(cosine_IRMO_HotJupiters)) {
+    if (!is.na(cosine_IRMO_HotJupiters[i, j])) {
+      if (cosine_IRMO_HotJupiters[i, j] < 0.95) {
+        cosine_IRMO_HotJupiters[i, j] <- 0
+      } else {
+        cosine_IRMO_HotJupiters[i, j] <- 1
+      }
+    }
+      else {
+    cosine_IRMO_HotJupiters[i, j] <- 0}
+  }
+}
+
+if (is.na(cosine_IRMO_HotJupiters[i, j])) 
+    {
+    cosine_IRMO_HotJupiters[i, j] <- 0}
+
+diag(cosine_IRMO_HotJupiters) <- 0
+
+
+```
+
+```{r 4D Cosine Network Plot with  Insolation}
+
+set.seed(123)
+
+cosine_IRMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMO_HotJupiters)
+#plot(cosine_IRMO_HotJupitersnet)
+
+cosine_IRMO_HotJupitersnet<-simplify(cosine_IRMO_HotJupitersnet)
+
+isolated = which(degree(cosine_IRMO_HotJupitersnet)==0)
+cosine_IRMO_HotJupitersnet = delete_vertices(cosine_IRMO_HotJupitersnet,isolated)
+
+#plot(cosine_IRMO_HotJupitersnet)
+
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)
+
+
+colors <- colorRampPalette(c("blue","red"))(100)  # Adjust the number of colors as needed
+vertex.colors <- colors[cut(HotJupiters$pl_insolFill, breaks = 100)]
+
+
+coords27 <- layout.fruchterman.reingold(cosine_IRMO_HotJupitersnet)
+
+V(cosine_IRMO_HotJupitersnet)$Rad <- HotJupiters$pl_radj*6
+coords27 <- layout.fruchterman.reingold(cosine_IRMO_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_IRMO_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_IRMO_HotJupitersnet)$Rad, layout = coords27, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 4600, 61000000)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+# undirected_IRMO <- simplify(as.undirected(cosine_IRMO_HotJupitersnet))
+# Louvain_Comm<-cluster_louvain(undirected_IRMO)
+# 
+# Louvain_Comm$membership
+
+```
+
+```{r 4D Cosine Network Plot with Insolation1}
+
+set.seed(123)
+
+
+cosine_IRMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMO_HotJupiters)
+
+isolated = which(degree(cosine_IRMO_HotJupitersnet)==0)
+cosine_IRMO_HotJupitersnet = delete_vertices(cosine_IRMO_HotJupitersnet,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+colors1 <- colorRampPalette(c("orange","purple"))(100)  # Adjust the number of colors as needed
+vertex.colors1 <- colors1[cut(HotJupiters$pl_orbper, breaks = 100)]
+
+#vertex.colors <- adjustcolor(vertex.colors, alpha.f = 0.6)  # Set alpha value between 0 (transparent) and 1 (opaque)
+
+V(cosine_IRMO_HotJupitersnet)$Rad <- HotJupiters$pl_bmassj
+coords27 <- layout.fruchterman.reingold(cosine_IRMO_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_IRMO_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_IRMO_HotJupitersnet)$Rad, layout = coords27, edge.arrow.size = 0.0, vertex.color = vertex.colors1, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("orange","purple"))(100), 0.17, 98.30)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+
+``` {r clusters with insolation}
+
+set.seed(123)
+
+cosine_IRMO_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMO_HotJupiters)
+
+isolated = which(degree(cosine_IRMO_HotJupitersnet)==0)
+cosine_IRMO_HotJupitersnet = delete_vertices(cosine_IRMO_HotJupitersnet,isolated)
+
+undirected_IRMO <- simplify(as.undirected(cosine_IRMO_HotJupitersnet))
+Louvain_Comm<-cluster_louvain(undirected_IRMO)
+
+Louvain_Comm$membership
+#cluster_leading_eigen(undirected_IRMO)
+#cluster_label_prop(undirected_IRMO)
+#cluster_walktrap(undirected_IRMO)
+
+plot(cluster_louvain(undirected_IRMO), undirected_IRMO, vertex.label=NA, vertex.size = HotJupiters$pl_radj*6)
+mtext("HJ Louvain Insol-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+plot(cluster_leading_eigen(undirected_IRMO), undirected_IRMO, vertex.label=NA, vertex.size = V(undirected_IRMO)$Rad)
+mtext("HJ LeadingEigen Insol-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+
+```{r communities 86 with insolation}
+
+HotJupiters$Com1 <- as.integer(Louvain_Comm$membership == 1)
+HotJupiters$Com2 <- as.integer(Louvain_Comm$membership == 2)
+HotJupiters$Com3 <- as.integer(Louvain_Comm$membership == 3)
+HotJupiters$Com4 <- as.integer(Louvain_Comm$membership == 4)
+HotJupiters$Com5 <- as.integer(Louvain_Comm$membership == 5)
+
+subset_Com1 <- subset(HotJupiters, Com1 == 1)
+subset_Com2 <- subset(HotJupiters, Com2 == 1)
+subset_Com3 <- subset(HotJupiters, Com3 == 1)
+subset_Com4 <- subset(HotJupiters, Com4 == 1)
+subset_Com5 <- subset(HotJupiters, Com5 == 1)
+
+
+
+library(psych)
+
+pairs.panels(subset_Com1[,c(9,21,30,135)], 
+             main = "Community 1", # add title to the panel
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com2[,c(9,21,30,135)],
+             main = "Community 2",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com3[,c(9,21,30,135)],
+             main = "Community 3",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com4[,c(9,21,30,135)],
+             main = "Community 4",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+# pairs.panels(subset_Com5[,c(9,21,30,135)],
+#              main = "Community 5",
+#              method = "pearson", # correlation method
+#              hist.col = "#00AFBB",
+#              scale = FALSE,
+#              density = TRUE,  # show density plots
+#              ellipses = TRUE # show correlation ellipses
+#              )
+
+
+```
+
+``` {r vis}
+library("visNetwork")
+
+Planet_net_Simple<-simplify(cosine_IRMO_HotJupitersnet)
+
+# Example colors for each community
+community_colors <- c(
+  "rgba(255, 0, 0, 0.5)",     # Red
+  "rgba(0, 160, 0, 0.5)",     # Green
+  "rgba(0, 0, 255, 0.5)",     # Blue
+  "rgba(255, 215, 0, 0.5)",   # Gold
+  "rgba(128, 0, 128, 0.5)",   # Purple
+  "rgba(0, 255, 255, 0.5)",   # Cyan
+  "rgba(255, 165, 0, 0.5)",   # Orange
+  "rgba(255, 0, 255, 0.5)",   # Magenta
+  "rgba(128, 128, 128, 0.5)"  # Gray
+)
+
+data <- toVisNetworkData(Planet_net_Simple)
+
+
+# Add color to nodes based on their community membership
+data$nodes$color <- community_colors[Louvain_Comm$membership]
+data$nodes$size <- 10  # Adjust the size of vertices
+data$nodes$font.size <- 12  # Adjust the size of labels
+data$nodes$group <- Louvain_Comm$membership
+
+
+# Create the network visualization
+net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main = "Louvain Hot Jupiter Community Network", submain = list(text = "Based on Insolation, Orbital Period, Mass, and Radius (95% Similiarity)")) %>%
+  visOptions(selectedBy = "group") %>% 
+  visIgraphLayout()
+  # visEdges(smooth = FALSE) %>%
+  # visPhysics(solver = "forceAtlas2Based", stabilization = FALSE,
+  #           forceAtlas2Based = list(gravitationalConstant = -500))
+
+
+visSave(net, file = "networkIRMO95.html", background = "white")
+
+```
+
+Including Eccentricity
+
+
+``` {r HotJUpiters Ecc Filter}
+
+HotJupiters <- HotJupiters[!is.na(HotJupiters$pl_orbeccen), ]
+
+
+HotJupiters[complete.cases(HotJupiters[, c("pl_orbeccen")]), ]
+
+HotJupiters <- HotJupiters %>%
+  filter(pl_name != "Kepler-23 b") #Removing K2-137 b which is a terrestrial planet.
+
+
+
+```
+
+
+```{r 5D Cosine Similarity Table (with Insolation)}
+
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_insolFill", "pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")]
+#View(selected_columns)
+normalized_columns <-  apply(selected_columns[,c("pl_insolFill", "pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")],2,normalized)
+#View(normalized_columns)
+IRMOE_HotJupiters <- t(normalized_columns)
+colnames(IRMOE_HotJupiters) <- HotJupiters$pl_name
+rownames(IRMOE_HotJupiters) <- c("pl_insolFill","pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")
+cosine_IRMOE_HotJupiters <- cosine(as.matrix(IRMOE_HotJupiters))
+
+
+
+
+#View(cosine_IRMOE_HotJupiters)
+
+# 
+for (i in 1:ncol(cosine_IRMOE_HotJupiters)) {
+  for (j in 1:ncol(cosine_IRMOE_HotJupiters)) {
+    if (!is.na(cosine_IRMOE_HotJupiters[i, j])) {
+      if (cosine_IRMOE_HotJupiters[i, j] < 0.95) {
+        cosine_IRMOE_HotJupiters[i, j] <- 0
+      } else {
+        cosine_IRMOE_HotJupiters[i, j] <- 1
+      }
+    }
+      else {
+    cosine_IRMOE_HotJupiters[i, j] <- 0}
+  }
+}
+
+if (is.na(cosine_IRMOE_HotJupiters[i, j])) 
+    {
+    cosine_IRMOE_HotJupiters[i, j] <- 0}
+
+diag(cosine_IRMOE_HotJupiters) <- 0
+
+
+```
+
+```{r 4D Cosine Network Plot with  Insolation}
+
+set.seed(123)
+
+cosine_IRMOE_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMOE_HotJupiters)
+#plot(cosine_IRMOE_HotJupitersnet)
+
+cosine_IRMOE_HotJupitersnet<-simplify(cosine_IRMOE_HotJupitersnet)
+
+isolated = which(degree(cosine_IRMOE_HotJupitersnet)==0)
+cosine_IRMOE_HotJupitersnet = delete_vertices(cosine_IRMOE_HotJupitersnet,isolated)
+
+#plot(cosine_IRMOE_HotJupitersnet)
+
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)
+
+
+colors <- colorRampPalette(c("blue","red"))(100)  # Adjust the number of colors as needed
+vertex.colors <- colors[cut(HotJupiters$pl_insolFill, breaks = 100)]
+
+
+V(cosine_IRMOE_HotJupitersnet)$Rad <- HotJupiters$pl_radj*6
+coords28 <- layout.fruchterman.reingold(cosine_IRMOE_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_IRMOE_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_IRMOE_HotJupitersnet)$Rad, layout = coords28, edge.arrow.size = 0.0, vertex.color = vertex.colors, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("blue","red"))(100), 4600, 61000000)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+# undirected_IRMO <- simplify(as.undirected(cosine_IRMOE_HotJupitersnet))
+# Louvain_Comm<-cluster_louvain(undirected_IRMOE)
+# 
+# Louvain_Comm$membership
+
+```
+
+```{r 4D Cosine Network Plot with Insolation1}
+
+set.seed(123)
+
+
+cosine_IRMOE_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMOE_HotJupitersnet)
+
+isolated = which(degree(cosine_IRMOE_HotJupitersnet)==0)
+cosine_IRMOE_HotJupitersnet = delete_vertices(cosine_IRMOE_HotJupitersnet,isolated)
+edge.colors <- adjustcolor("darkgrey", alpha.f = 0.1)  # Adjust the alpha value as needed
+
+colors1 <- colorRampPalette(c("orange","purple"))(100)  # Adjust the number of colors as needed
+vertex.colors1 <- colors1[cut(HotJupiters$pl_orbper, breaks = 100)]
+
+#vertex.colors <- adjustcolor(vertex.colors, alpha.f = 0.6)  # Set alpha value between 0 (transparent) and 1 (opaque)
+
+#V(cosine_IRMOE_HotJupitersnet)$Rad <- HotJupiters$pl_bmassj
+coords28 <- layout.fruchterman.reingold(cosine_IRMOE_HotJupitersnet)
+
+layout(matrix(c(1,2), nrow=1), widths=c(2,1))
+plot(simplify(cosine_IRMOE_HotJupitersnet), vertex.label=NA, vertex.size = V(cosine_IRMOE_HotJupitersnet)$Rad, layout = coords28, edge.arrow.size = 0.0, vertex.color = vertex.colors1, edge.color = edge.colors)
+par(mar=c(2,7,3,1) + 0.1)  # Adjust margins to make the color bar thinner
+color.bar(colorRampPalette(c("orange","purple"))(100), 0.17, 98.30)
+mtext("Hot Jupiter Temp-Rad-Mass-OrbPer Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+
+``` {r clusters with insolation}
+
+set.seed(123)
+
+cosine_IRMOE_HotJupitersnet <- graph_from_adjacency_matrix(cosine_IRMOE_HotJupiters)
+
+#plot(cosine_IRMOE_HotJupitersnet)
+
+isolated = which(degree(cosine_IRMOE_HotJupitersnet)==0)
+cosine_IRMOE_HotJupitersnet = delete_vertices(cosine_IRMOE_HotJupitersnet,isolated)
+
+undirected_IRMOE <- simplify(as.undirected(cosine_IRMOE_HotJupitersnet))
+Louvain_Comm<-cluster_louvain(undirected_IRMOE)
+
+Louvain_Comm$membership
+#cluster_leading_eigen(undirected_IRMOE)
+#cluster_label_prop(undirected_IRMOE)
+#cluster_walktrap(undirected_IRMOE)
+
+plot(cluster_louvain(undirected_IRMOE), undirected_IRMOE, vertex.label=NA, vertex.size = HotJupiters$pl_radj*6)
+mtext("HJ Louvain Ins-Rad-Mass-OrbP-Ecc Network", outer=TRUE, cex=1.5, line=-1)
+
+plot(cluster_leading_eigen(undirected_IRMOE), undirected_IRMOE, vertex.label=NA, vertex.size = V(undirected_IRMOE)$Rad)
+mtext("HJ LeadingEigen Ins-Rad-Mass-OrbP-Ecc Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+
+```{r communities 95 with insolation 5D}
+
+HotJupiters$Com1 <- as.integer(Louvain_Comm$membership == 1)
+HotJupiters$Com2 <- as.integer(Louvain_Comm$membership == 2)
+HotJupiters$Com3 <- as.integer(Louvain_Comm$membership == 3)
+HotJupiters$Com4 <- as.integer(Louvain_Comm$membership == 4)
+HotJupiters$Com5 <- as.integer(Louvain_Comm$membership == 5)
+
+subset_Com1 <- subset(HotJupiters, Com1 == 1)
+subset_Com2 <- subset(HotJupiters, Com2 == 1)
+subset_Com3 <- subset(HotJupiters, Com3 == 1)
+subset_Com4 <- subset(HotJupiters, Com4 == 1)
+subset_Com5 <- subset(HotJupiters, Com5 == 1)
+
+
+
+library(psych)
+
+pairs.panels(subset_Com1[,c(9,21,30,40,135)], 
+             main = "Community 1", # add title to the panel
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com2[,c(9,21,30,40,135)],
+             main = "Community 2",
+             method = "pearson", # correlation method 
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com3[,c(9,21,30,40,135)],
+             main = "Community 3",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com4[,c(9,21,30,40,135)],
+             main = "Community 4",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com5[,c(9,21,30,40,135)],
+             main = "Community 5",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+
+```
+
+``` {r vis}
+library("visNetwork")
+
+Planet_net_Simple<-simplify(cosine_IRMOE_HotJupitersnet)
+
+# Example colors for each community
+community_colors <- c(
+  "rgba(255, 0, 0, 0.5)",     # Red
+  "rgba(0, 160, 0, 0.5)",     # Green
+  "rgba(0, 0, 255, 0.5)",     # Blue
+  "rgba(255, 215, 0, 0.5)",   # Gold
+  "rgba(128, 0, 128, 0.5)",   # Purple
+  "rgba(0, 255, 255, 0.5)",   # Cyan
+  "rgba(255, 165, 0, 0.5)",   # Orange
+  "rgba(255, 0, 255, 0.5)",   # Magenta
+  "rgba(128, 128, 128, 0.5)"  # Gray
+)
+
+data <- toVisNetworkData(Planet_net_Simple)
+
+
+# Add color to nodes based on their community membership
+data$nodes$color <- community_colors[Louvain_Comm$membership]
+data$nodes$size <- 10  # Adjust the size of vertices
+data$nodes$font.size <- 12  # Adjust the size of labels
+data$nodes$group <- Louvain_Comm$membership
+
+
+# Create the network visualization
+net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main = "Louvain Hot Jupiter Community Network", submain = list(text = "Based on Insolation, Orbital Period, Mass, Radius, and Eccentricity (95% Similiarity)")) %>%
+  visOptions(selectedBy = "group") %>% 
+  visIgraphLayout()
+  # visEdges(smooth = FALSE) %>%
+  # visPhysics(solver = "forceAtlas2Based", stabilization = FALSE,
+  #           forceAtlas2Based = list(gravitationalConstant = -500))
+
+
+visSave(net, file = "networkIRMOE95.html", background = "white")
+```
+
+```{r 5D Cosine Similarity Table (with Temperature)}
+
+
+normalized<-function(y) {
+
+  x<-y[!is.na(y)]
+  
+  x<-(x - min(x)) / (max(x) - min(x))
+
+  y[!is.na(y)]<-x
+
+  return(y)
+  }
+
+selected_columns <- HotJupiters[, c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")]
+#View(selected_columns)
+normalized_columns <-  apply(selected_columns[,c("pl_eqt", "pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")],2,normalized)
+#View(normalized_columns)
+TRMOE_HotJupiters <- t(normalized_columns)
+colnames(TRMOE_HotJupiters) <- HotJupiters$pl_name
+rownames(TRMOE_HotJupiters) <- c("pl_eqt","pl_radj", "pl_bmassj", "pl_orbper", "pl_orbeccen")
+cosine_TRMOE_HotJupiters <- cosine(as.matrix(TRMOE_HotJupiters))
+
+
+
+
+#View(cosine_TRMOE_HotJupiters)
+
+# 
+for (i in 1:ncol(cosine_TRMOE_HotJupiters)) {
+  for (j in 1:ncol(cosine_TRMOE_HotJupiters)) {
+    if (!is.na(cosine_TRMOE_HotJupiters[i, j])) {
+      if (cosine_TRMOE_HotJupiters[i, j] < 0.90) {
+        cosine_TRMOE_HotJupiters[i, j] <- 0
+      } else {
+        cosine_TRMOE_HotJupiters[i, j] <- 1
+      }
+    }
+      else {
+    cosine_TRMOE_HotJupiters[i, j] <- 0}
+  }
+}
+
+if (is.na(cosine_TRMOE_HotJupiters[i, j])) 
+    {
+    cosine_TRMOE_HotJupiters[i, j] <- 0}
+
+diag(cosine_TRMOE_HotJupiters) <- 0
+
+
+```
+
+``` {r clusters with temperature}
+
+set.seed(123)
+
+cosine_TRMOE_HotJupitersnet <- graph_from_adjacency_matrix(cosine_TRMOE_HotJupiters)
+
+#plot(cosine_TRMOE_HotJupitersnet)
+
+isolated = which(degree(cosine_TRMOE_HotJupitersnet)==0)
+cosine_TRMOE_HotJupitersnet = delete_vertices(cosine_TRMOE_HotJupitersnet,isolated)
+
+undirected_TRMOE <- simplify(as.undirected(cosine_TRMOE_HotJupitersnet))
+Louvain_Comm<-cluster_louvain(undirected_TRMOE)
+
+Louvain_Comm$membership
+#cluster_leading_eigen(undirected_TRMOE)
+#cluster_label_prop(undirected_TRMOE)
+#cluster_walktrap(undirected_TRMOE)
+
+plot(cluster_louvain(undirected_TRMOE), undirected_TRMOE, vertex.label=NA, vertex.size = HotJupiters$pl_radj*6)
+mtext("HJ Louvain Temp-Rad-Mass-OrbPer-Ecc Network", outer=TRUE, cex=1.5, line=-1)
+
+plot(cluster_leading_eigen(undirected_TRMOE), undirected_TRMOE, vertex.label=NA, vertex.size = V(undirected_TRMOE)$Rad)
+mtext("HJ LeadingEigen Temp-Rad-Mass-OrbPer-Ecc Network", outer=TRUE, cex=1.5, line=-1)
+
+```
+
+```{r communities 95 with temperature 5D}
+
+HotJupiters$Com1 <- as.integer(Louvain_Comm$membership == 1)
+HotJupiters$Com2 <- as.integer(Louvain_Comm$membership == 2)
+HotJupiters$Com3 <- as.integer(Louvain_Comm$membership == 3)
+HotJupiters$Com4 <- as.integer(Louvain_Comm$membership == 4)
+HotJupiters$Com5 <- as.integer(Louvain_Comm$membership == 5)
+HotJupiters$Com6 <- as.integer(Louvain_Comm$membership == 5)
+
+subset_Com1 <- subset(HotJupiters, Com1 == 1)
+subset_Com2 <- subset(HotJupiters, Com2 == 1)
+subset_Com3 <- subset(HotJupiters, Com3 == 1)
+subset_Com4 <- subset(HotJupiters, Com4 == 1)
+subset_Com5 <- subset(HotJupiters, Com5 == 1)
+
+
+
+library(psych)
+
+pairs.panels(subset_Com1[,c(9,21,30,40,48)], 
+             main = "Community 1", # add title to the panel
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+pairs.panels(subset_Com2[,c(9,21,30,40,48)],
+             main = "Community 2",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com3[,c(9,21,30,40,48)],
+             main = "Community 3",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+pairs.panels(subset_Com4[,c(9,21,30,40,48)],
+             main = "Community 4",
+             method = "pearson", # correlation method
+             hist.col = "#00AFBB",
+             scale = FALSE,
+             density = TRUE,  # show density plots
+             ellipses = TRUE # show correlation ellipses
+             )
+
+# pairs.panels(subset_Com5[,c(9,21,30,40,48)],
+#              main = "Community 5",
+#              method = "pearson", # correlation method
+#              hist.col = "#00AFBB",
+#              scale = FALSE,
+#              density = TRUE,  # show density plots
+#              ellipses = TRUE # show correlation ellipses
+#              )
+
+
+```
+``` {r vis}
+library("visNetwork")
+
+Planet_net_Simple<-simplify(cosine_TRMOE_HotJupitersnet)
+
+# Example colors for each community
+community_colors <- c(
+  "rgba(255, 0, 0, 0.5)",     # Red
+  "rgba(0, 160, 0, 0.5)",     # Green
+  "rgba(0, 0, 255, 0.5)",     # Blue
+  "rgba(255, 215, 0, 0.5)",   # Gold
+  "rgba(128, 0, 128, 0.5)",   # Purple
+  "rgba(0, 255, 255, 0.5)",   # Cyan
+  "rgba(255, 165, 0, 0.5)",   # Orange
+  "rgba(255, 0, 255, 0.5)",   # Magenta
+  "rgba(128, 128, 128, 0.5)"  # Gray
+)
+
+data <- toVisNetworkData(Planet_net_Simple)
+
+
+# Add color to nodes based on their community membership
+data$nodes$color <- community_colors[Louvain_Comm$membership]
+data$nodes$size <- 10  # Adjust the size of vertices
+data$nodes$font.size <- 12  # Adjust the size of labels
+data$nodes$group <- Louvain_Comm$membership
+
+
+# Create the network visualization
+net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main = "Louvain Hot Jupiter Community Network", submain = list(text = "Based on Temperature, Orbital Period, Mass, Radius, and Eccentricity (90% Similiarity)")) %>%
+  visOptions(selectedBy = "group") %>% 
+  visIgraphLayout()
+  # visEdges(smooth = FALSE) %>%
+  # visPhysics(solver = "forceAtlas2Based", stabilization = FALSE,
+  #           forceAtlas2Based = list(gravitationalConstant = -500))
+
+
+visSave(net, file = "networkTRMOE95.html", background = "white")
+```
+##Conclusion
