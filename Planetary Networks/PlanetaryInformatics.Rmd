@@ -2372,6 +2372,24 @@ net <- visNetwork(nodes = data$nodes, edges = data$edges, height = "500px", main
 visSave(net, file = "networkIRMOE95.html", background = "white")
 ```
 
+
+
+```{r num communities}
+
+numPlanet_Com1 <- nrow(subset_Com1)
+numPlanet_Com2 <- nrow(subset_Com2)
+numPlanet_Com3 <- nrow(subset_Com3)
+numPlanet_Com4 <- nrow(subset_Com4)
+numPlanet_Com5 <- nrow(subset_Com5)
+
+numPlanet_Com1
+numPlanet_Com2
+numPlanet_Com3
+numPlanet_Com4
+numPlanet_Com5
+
+```
+
 ```{r 5D Cosine Similarity Table (with Temperature)}
 
 
