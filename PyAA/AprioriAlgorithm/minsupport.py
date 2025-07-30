@@ -4,13 +4,15 @@
 High-level implementations of the apriori algorithm.
 """
 
-
 import random
 from collections import defaultdict
 from itertools import combinations
 
-#THIS IS NOT FUNCTIONAL. IT DOES NOT WORK 100% OF THE TIME. USUALLY, IT GOES OF TO INFINITY. 
-#DO NOT USE IF YOU DO NOT KNOW WHAT YOU ARE DOING.
+# THIS IS NOT FUNCTIONAL. IT DOES NOT WORK 100% OF THE TIME. USUALLY, IT GOES OF TO INFINITY. 
+# DO NOT USE IF YOU DO NOT KNOW WHAT YOU ARE DOING.
+# This is based off An Efficient Rigorous Approach for Identifying Statistically Significant Frequent Itemsets by Kirsch et al
+# This is unfinished. I believed that I have almost replicated algorithm 1 from the paper. It, however, does not work for our needs. 
+# One would also need to incorporate the tests in algorithm 2 for this to be complete.
 
 
 def estimate_s_min(transactions, k, f):
