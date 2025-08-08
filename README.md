@@ -35,6 +35,7 @@ Current team in charge of the repository:
 - Jose Perez Chavez
 - Vasundhara Gatne
 - Matthew Landon
+- Michael Burch
 
 
 ## License
